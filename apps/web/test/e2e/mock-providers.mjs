@@ -127,6 +127,12 @@ export function startMockServer(port = 4010) {
       if (system.includes("Você decide se duas notas")) {
         return res.end(JSON.stringify(anthropicMessage(JSON.stringify({ relation: "apoia", confidence: 0.9, rationale: "Ambas tratam de cadência de outbound." }), body.model)));
       }
+      if (system.includes("brief do JARVIS")) {
+        return res.end(JSON.stringify(anthropicMessage("📚 Brief de teste: você aprendeu sobre cadência.", body.model)));
+      }
+      if (system.includes("memória episódica")) {
+        return res.end(JSON.stringify(anthropicMessage("Pedro perguntou sobre cadência de outbound.", body.model)));
+      }
       return res.end(JSON.stringify(anthropicMessage("ok", body.model)));
     }
 

@@ -7,3 +7,5 @@ export * from "./extraction";
 export * from "./capture";
 export * from "./graph";
 export * from "./ingest-plan";
+export * from "./chunking";
+export * from "./export";

@@ -23,6 +23,11 @@ ingestão, Sonnet 5.5 no chat) · OpenAI (embeddings + transcrição) · Sigma.j
   memória), perfil cacheado e citações `[[Título]]`.
 - **MCP**: as mesmas 11 tools num servidor MCP remoto (`/api/mcp`, token por workspace).
 - **Lint semanal**: duplicatas, órfãs, clusters sem MOC e lembrete de sementes antigas no Telegram.
+- **Brief** diário e semanal no Telegram (e `/brief` sob demanda): o que você aprendeu, conexões e uma sugestão de ação.
+- **Fontes longas** (livros, transcrições de 1 h): chunks com embedding para o Jarvis citar trechos literais.
+- **Memória episódica**: cada conversa com o Jarvis vira um resumo pesquisável.
+- **Backup**: exportação completa para um vault do Obsidian (.zip) em Configurações.
+- **Editor** com autocomplete ao digitar `[[`.
 - **Multiusuário desde o dia 1**: `workspace_id` + RLS em tudo, uso de IA registrado por workspace.
 
 ## Rodando localmente
@@ -41,7 +46,7 @@ Para ver os dados do seed, associe seu usuário ao workspace de exemplo (instru�
 |---|---|
 | `pnpm test` | core (taxonomia, wikilinks, entity resolution, plano de ingestão) + web (Telegram, MCP, markdown/XSS, normalização, eval) |
 | `psql "$DB_URL" -f supabase/tests/rls_and_functions.sql` | RLS/isolamento, busca híbrida em PT, grafo, timeline, filas, imutabilidade, lint, merge |
-| `pnpm --filter web test:e2e` | e2e com app + Supabase local + mocks (Telegram/Anthropic/OpenAI): pareamento → captura → notas → embeddings → chat → MCP → isolamento |
+| `pnpm --filter web test:e2e` | e2e (18 passos) com app + Supabase local + mocks (Telegram/Anthropic/OpenAI): pareamento → captura → notas → embeddings → fonte longa → brief → chat → memória → exportação → MCP → isolamento |
 | `pnpm eval:ingest` | golden set de extração (10 capturas reais de exemplo) com modelo de verdade |
 
 ## Documentação

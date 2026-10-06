@@ -13,12 +13,14 @@
 7. Configurações → gerar token MCP → `claude mcp add --transport http jarvis https://<app>/api/mcp --header "Authorization: Bearer …"`.
 8. Rodar `pnpm eval:ingest` com a chave real e calibrar os limiares olhando ~50 links reais.
 
-## Fase 4 (restante)
-- [ ] Brief diário/semanal no Telegram ("o que aprendi esta semana") via pg_cron → `/api/workers/brief`.
-- [ ] Exportação Markdown/git (backup diário, formato compatível com Obsidian).
-- [ ] Chunks para fontes longas (livro inteiro, transcrição de 1 h) → `chunks` + `match_chunks` já existem no schema.
-- [ ] Memória episódica: resumo de cada conversa em `conversations.summary`.
-- [ ] Editor rico (TipTap/BlockNote) com autocomplete de `[[`.
+## Fase 4 ✅
+- [x] Brief diário (7h BRT) e semanal (domingo 19h BRT) no Telegram via pg_cron → `/api/workers/brief`; `/brief [semana]` sob demanda.
+- [x] Exportação para Markdown: vault do Obsidian (.zip) em Configurações → `/api/export`.
+- [x] Fontes longas: chunks com embedding (RAG em `search_knowledge`) e extração em partes de 24 mil caracteres.
+- [x] Memória episódica: resumo + embedding de cada conversa (`conversations.summary`), consultado pela tool `recall`.
+- [x] Autocomplete de `[[` no editor.
+- [ ] Backup automático em git (hoje é download manual do .zip). Fica para quando houver repositório de destino.
+- [ ] Editor rico (TipTap/BlockNote). O textarea com autocomplete atende por enquanto.
 
 ## Fase 5
 - [ ] WhatsApp (Evolution API em número secundário → Cloud API oficial), e-mail (encaminhar newsletters).

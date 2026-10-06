@@ -2,6 +2,9 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ENTITY_THRESHOLDS,
+  LONG_SOURCE_CHARS,
+  chunkText,
+  extractionSegments,
   aiLinkStatus,
   buildIngestPlan,
   resolveEntity,
@@ -11,7 +14,10 @@ import {
   type NoteType,
   type PlannedNote,
 } from "@jarvis/core";
+import { embed, toPgVector } from "@/lib/ai/embed";
 import { extractKnowledge } from "@/lib/ai/extract";
+import { recordUsage } from "@/lib/ai/llm";
+import { env } from "@/lib/env";
 import type { SourceRow } from "@/lib/types";
 import { createNote, upsertLink } from "./notes-repo";
 import { normalizeSource } from "./normalize";
@@ -73,18 +79,70 @@ export async function processSource(db: SupabaseClient, workspaceId: string, sou
     sessionContext = data;
   }
 
-  // 2. Extrair
-  const extracted = await extractKnowledge(workspaceId, {
-    text,
-    kind: source.kind,
-    channel: source.channel,
-    capturedAt: source.captured_at,
-    sessionContext,
-  });
+  // Fontes longas: chunks com embedding para o RAG (livro, transcrição de 1 h)
+  if (text.length > LONG_SOURCE_CHARS) await storeChunks(db, workspaceId, sourceId, text);
 
-  const result = await persistExtraction(db, workspaceId, sourceId, extracted, sessionContext);
+  // 2. Extrair (em partes quando a fonte é longa; a entity resolution une as entidades entre partes)
+  const segments = extractionSegments(text);
+  const results: IngestResult[] = [];
+  for (const [i, segment] of segments.entries()) {
+    const extracted = await extractKnowledge(workspaceId, {
+      text: segments.length > 1 ? `[Parte ${i + 1} de ${segments.length}]\n${segment}` : segment,
+      kind: source.kind,
+      channel: source.channel,
+      capturedAt: source.captured_at,
+      sessionContext,
+    });
+    results.push(await persistExtraction(db, workspaceId, sourceId, extracted, sessionContext));
+  }
   await markDone(db, workspaceId, sourceId);
-  return result;
+  return mergeResults(sourceId, results);
+}
+
+function mergeResults(sourceId: string, results: IngestResult[]): IngestResult {
+  const createdIds = new Set<string>();
+  const merged: IngestResult = { sourceId, contextTitle: null, created: [], reused: [], pendingReview: 0, linksCreated: 0 };
+  for (const r of results) {
+    merged.contextTitle ??= r.contextTitle;
+    for (const n of r.created) {
+      createdIds.add(n.id);
+      merged.created.push(n);
+    }
+    merged.pendingReview += r.pendingReview;
+    merged.linksCreated += r.linksCreated;
+  }
+  // Entidade criada numa parte e reutilizada em outra conta só como criada
+  const reused = new Map<string, IngestResult["reused"][number]>();
+  for (const n of results.flatMap((r) => r.reused)) if (!createdIds.has(n.id)) reused.set(n.id, n);
+  merged.reused = [...reused.values()];
+  return merged;
+}
+
+/** Guarda a fonte longa em chunks com embedding (idempotente por fonte). */
+async function storeChunks(db: SupabaseClient, workspaceId: string, sourceId: string, text: string) {
+  const { count } = await db
+    .from("chunks")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId)
+    .eq("source_id", sourceId);
+  if (count) return;
+  const pieces = chunkText(text);
+  const embeddings: (string | null)[] = [];
+  for (let i = 0; i < pieces.length; i += 64) {
+    const { vectors, tokens } = await embed(pieces.slice(i, i + 64));
+    embeddings.push(...vectors.map(toPgVector));
+    await recordUsage(workspaceId, "embed", env.embedModel(), { input_tokens: tokens }, "openai");
+  }
+  const { error } = await db.from("chunks").insert(
+    pieces.map((content, ordinal) => ({
+      workspace_id: workspaceId,
+      source_id: sourceId,
+      ordinal,
+      content,
+      embedding: embeddings[ordinal],
+    })),
+  );
+  if (error) throw new Error(`chunks: ${error.message}`);
 }
 
 /** Etapas 3–6. Separado para ser reaproveitado pelo eval e por capturas já estruturadas. */

@@ -32,6 +32,8 @@ flowchart LR
   SEARCH --> NOTES
   CC[Claude Code / Desktop] -->|MCP HTTP + token| MCP
   LINT[pg_cron semanal] --> LW[/api/workers/lint/] --> REV[(review_items)]
+  BRIEF[pg_cron diário/semanal] --> BW[/api/workers/brief/] --> TG
+  UI --> EXP[/api/export/ → vault Obsidian .zip/]
 ```
 
 ## Camadas (padrão LLM Wiki de Karpathy)
@@ -55,6 +57,18 @@ Operações: **ingest** (pipeline), **query** (Jarvis/MCP), **lint** (job semana
 8. Resposta no canal: "Registrei em "RD Summit 2026": 2 insights, 1 pessoa…".
 9. Trigger em `notes` enfileira `embeddings`; o worker gera embeddings em lote e roda o link-suggester
    (`match_notes` top-5 → limiares 0,80/0,70 → juiz Haiku decide a relação e escreve o `rationale`).
+
+## Fase 4: fontes longas, memória e saída
+- **Fontes longas** (> 8 mil caracteres): o texto normalizado vira `chunks` de ~2 mil caracteres com embedding
+  (RAG, retornado como `source_passages` por `search_knowledge`), e a extração roda em partes de 24 mil
+  caracteres. A entity resolution junta as entidades repetidas entre as partes.
+- **Memória em três níveis**: perfil fixo (system prompt cacheado), `memories` (fatos duráveis, tool `remember`)
+  e **episódica**: depois de cada resposta do chat, `after()` resume a conversa (Haiku) e grava resumo e
+  embedding em `conversations`. A tool `recall` consulta memórias e conversas passadas (`match_conversations`).
+- **Brief**: `buildBrief` junta as notas do período, as conexões criadas e as pendências, e o Haiku escreve o texto para o
+  Telegram. Não envia nada se não houve notas novas.
+- **Exportação**: `buildVaultZip` gera `<Tipo>/<Título>.md` com frontmatter YAML e conexões em campos inline
+  (Dataview). Títulos repetidos ganham sufixo e o título original vira alias.
 
 ## Decisões (ADRs)
 

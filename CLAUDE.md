@@ -45,3 +45,6 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 - Fila pgmq real usa tabelas `pgmq.q_<fila>`.
 - Cores com alfa em arestas WebGL (Sigma) variam por GPU: use cores opacas pré-misturadas.
 - Arquivos `"use server"` só podem exportar funções async.
+- `after()` deve ser chamado no corpo do handler; para esperar um stream, use uma promise resolvida no fim dele.
+- Filtrar PostgREST por texto muito longo (`.eq("raw_text", …)`) estoura a URL: filtre por id/data.
+- `.neq()` em campo JSON exclui linhas com NULL: use `.or("campo.is.null,campo.neq.x")`.

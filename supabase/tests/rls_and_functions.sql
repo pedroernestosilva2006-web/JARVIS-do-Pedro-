@@ -78,8 +78,10 @@ reset role;
 do $$
 declare v int; sid uuid;
 begin
-  select count(*) into v from pgmq.q_embeddings;
-  assert v >= 16, format('notas novas deveriam enfileirar embeddings, veio %s', v);
+  -- (independe do estado da fila: olha a nota criada por este teste)
+  select count(*) into v from pgmq.q_embeddings
+   where message->>'note_id' = (select id::text from public.notes where slug = 'segredo');
+  assert v = 1, format('nota nova deveria enfileirar embedding, veio %s', v);
 
   insert into public.sources (workspace_id, channel, kind, raw_text, idempotency_key)
   values ('00000000-0000-0000-0000-000000000001', 'telegram', 'text', 'teste', 'tg:1')

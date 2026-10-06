@@ -14,7 +14,7 @@ export function anthropic(): Anthropic {
   return client;
 }
 
-export type AiOperation = "extract" | "chat" | "embed" | "transcribe" | "vision" | "link_judge";
+export type AiOperation = "extract" | "chat" | "embed" | "transcribe" | "vision" | "link_judge" | "brief" | "memory";
 
 export async function recordUsage(
   workspaceId: string,

@@ -1,8 +1,113 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { NOTE_TYPES, STAGES, TYPE_LABELS } from "@jarvis/core";
 import { deleteNoteAction, saveNoteAction } from "@/app/(app)/actions";
+import { completeWikilink, openWikilinkQuery } from "@/lib/wikilink-autocomplete";
+
+type Suggestion = { id: string; title: string; type: string };
+
+/** Textarea markdown com autocomplete ao digitar [[ */
+function WikilinkTextarea({
+  value,
+  onChange,
+  className,
+  excludeId,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className: string;
+  excludeId: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const [query, setQuery] = useState<string | null>(null);
+  const [items, setItems] = useState<Suggestion[]>([]);
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (query === null) return;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/notes/titles?q=${encodeURIComponent(query)}`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((d: Suggestion[]) => {
+          setItems(d.filter((it) => it.id !== excludeId));
+          setActive(0);
+        })
+        .catch(() => {});
+    }, 150);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [query, excludeId]);
+
+  const refresh = (text: string, caret: number) => setQuery(openWikilinkQuery(text, caret)?.query ?? null);
+
+  const pick = (title: string) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = completeWikilink(value, el.selectionStart, title);
+    onChange(r.text);
+    setQuery(null);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(r.caret, r.caret);
+    });
+  };
+
+  const open = query !== null && items.length > 0;
+  return (
+    <div className="relative">
+      <textarea
+        ref={ref}
+        className={className}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          refresh(e.target.value, e.target.selectionStart);
+        }}
+        onClick={(e) => refresh(value, e.currentTarget.selectionStart)}
+        onKeyDown={(e) => {
+          if (!open) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActive((a) => (a + 1) % items.length);
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((a) => (a - 1 + items.length) % items.length);
+          } else if (e.key === "Enter" || e.key === "Tab") {
+            e.preventDefault();
+            pick(items[active]!.title);
+          } else if (e.key === "Escape") {
+            setQuery(null);
+          }
+        }}
+        placeholder="Escreva em markdown. Digite [[ para ligar a outra nota."
+      />
+      {open && (
+        <ul className="absolute bottom-2 left-2 z-10 w-80 overflow-hidden rounded-md border border-border bg-panel shadow-xl">
+          <li className="px-3 py-1 text-xs text-muted">Ligar a… (↑↓ Enter)</li>
+          {items.map((it, i) => (
+            <li key={it.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pick(it.title);
+                }}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${i === active ? "bg-accent-2/40" : "hover:bg-panel-2"}`}
+              >
+                <span className="text-xs text-muted">{TYPE_LABELS[it.type as keyof typeof TYPE_LABELS] ?? it.type}</span>
+                <span className="truncate">{it.title}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   note: { id: string; title: string; content_md: string; summary: string | null; type: string; stage: string; aliases: string[] };
@@ -77,11 +182,11 @@ export function NoteEditor({ note, renderedHtml, startEditing }: Props) {
         <input className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm" placeholder="Apelidos (separados por vírgula)" value={form.aliases} onChange={(e) => setForm({ ...form, aliases: e.target.value })} />
       </div>
       <input className={field} placeholder="Resumo em 1-2 frases" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
-      <textarea
+      <WikilinkTextarea
         className={`${field} min-h-[320px] font-mono`}
         value={form.content_md}
-        onChange={(e) => setForm({ ...form, content_md: e.target.value })}
-        placeholder="Escreva em markdown. Use [[Título de outra nota]] para criar conexões."
+        onChange={(content_md) => setForm((f) => ({ ...f, content_md }))}
+        excludeId={note.id}
       />
       <div className="flex items-center gap-2">
         <button disabled={pending} onClick={save} className="rounded-md bg-accent-2 px-3 py-1.5 text-sm text-white hover:bg-accent disabled:opacity-50">

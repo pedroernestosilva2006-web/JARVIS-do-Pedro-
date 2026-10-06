@@ -2,6 +2,7 @@ import "server-only";
 import { parseCommand, type CaptureCommand } from "@jarvis/core";
 import { createNote, findNoteByTitle } from "@/lib/ingest/notes-repo";
 import { runJarvis } from "@/lib/jarvis/agent";
+import { buildBrief } from "@/lib/workers/brief";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activeSessionContext, saveCapture } from "./store";
 import {
@@ -21,7 +22,10 @@ Comandos:
 /livro <título> — idem, para um livro que você está lendo
 /fim — encerra o contexto atual
 /p <pergunta> — pergunte algo à sua base
-/ajuda — esta mensagem`;
+/brief [semana] — o que você aprendeu hoje (ou na semana)
+/ajuda — esta mensagem
+
+Todo dia às 7h eu mando o brief do dia anterior, se houver novidade.`;
 
 export type BotOutcome = { kind: "captured"; sourceId: string } | { kind: "handled" } | { kind: "ignored" };
 
@@ -155,6 +159,19 @@ async function handleCommand(
         .eq("external_user_id", userId)
         .gt("expires_at", new Date().toISOString());
       await sendTelegramMessage(chatId, "Contexto encerrado. As próximas capturas ficam soltas (a IA tenta deduzir o contexto).");
+      return;
+    }
+    case "brief": {
+      await sendTelegramTyping(chatId);
+      const period = command.arg;
+      ctx.schedule(async () => {
+        try {
+          const brief = await buildBrief(db, workspaceId, period);
+          await sendTelegramMessage(chatId, brief ?? `Nada novo ${period === "dia" ? "nas últimas 24 horas" : "nos últimos 7 dias"}. Que tal capturar algo? 🙂`);
+        } catch (err) {
+          await sendTelegramMessage(chatId, `Erro ao montar o brief: ${err instanceof Error ? err.message : err}`);
+        }
+      });
       return;
     }
     case "pergunta": {

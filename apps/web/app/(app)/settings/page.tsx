@@ -80,6 +80,15 @@ export default async function SettingsPage() {
         <McpTokenCreator appUrl={env.appUrl()} />
       </Card>
 
+      <Card title="Backup (Markdown / Obsidian)">
+        <p className="mb-3 text-sm text-muted">
+          Baixe todas as notas como um vault do Obsidian: um arquivo .md por nota, com frontmatter e conexões.
+        </p>
+        <a href="/api/export" className="inline-block rounded-md bg-accent-2 px-3 py-1.5 text-sm text-white hover:bg-accent">
+          Baixar backup (.zip)
+        </a>
+      </Card>
+
       <Card title="Uso de IA (30 dias)">
         {!byOp.size && <p className="text-sm text-muted">Sem uso registrado.</p>}
         <table className="w-full text-left text-sm">

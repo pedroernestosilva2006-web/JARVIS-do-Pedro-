@@ -76,7 +76,19 @@ export const searchKnowledge = tool({
         };
       }),
     );
-    return { results: hits, graph_context: context };
+    // Trechos literais de fontes longas (livros, transcrições) — RAG sobre os chunks
+    let source_passages: { source_id: string; content: string; similarity: number }[] = [];
+    if (embedding) {
+      const { data: chunks } = await ctx.db.rpc("match_chunks", {
+        p_workspace: ctx.workspaceId,
+        query_embedding: embedding,
+        match_count: 3,
+      });
+      source_passages = ((chunks ?? []) as { source_id: string; content: string; similarity: number }[])
+        .filter((c) => c.similarity >= 0.3)
+        .map((c) => ({ source_id: c.source_id, content: c.content.slice(0, 1500), similarity: c.similarity }));
+    }
+    return { results: hits, graph_context: context, source_passages };
   },
 });
 
@@ -263,7 +275,8 @@ export const remember = tool({
 
 export const recall = tool({
   name: "recall",
-  description: "Recupera memórias duráveis sobre o Pedro relevantes para um assunto.",
+  description:
+    "Recupera memórias duráveis sobre o Pedro e resumos de conversas passadas (memória episódica) relevantes para um assunto.",
   schema: z.object({ query: z.string() }),
   run: async (ctx, { query }) => {
     const embedding = await safeEmbed(query);
@@ -276,13 +289,12 @@ export const recall = tool({
         .limit(10);
       return data;
     }
-    const { data, error } = await ctx.db.rpc("match_memories", {
-      p_workspace: ctx.workspaceId,
-      query_embedding: embedding,
-      match_count: 8,
-    });
-    if (error) throw new Error(error.message);
-    return data;
+    const [memories, episodes] = await Promise.all([
+      ctx.db.rpc("match_memories", { p_workspace: ctx.workspaceId, query_embedding: embedding, match_count: 8 }),
+      ctx.db.rpc("match_conversations", { p_workspace: ctx.workspaceId, query_embedding: embedding, match_count: 3 }),
+    ]);
+    if (memories.error) throw new Error(memories.error.message);
+    return { memories: memories.data, past_conversations: episodes.data ?? [] };
   },
 });
 

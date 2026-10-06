@@ -1,6 +1,9 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { after } from "next/server";
 import { z } from "zod";
 import { runJarvis, type JarvisEvent } from "@/lib/jarvis/agent";
+import { summarizeConversation } from "@/lib/jarvis/memory";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 300;
@@ -46,10 +49,25 @@ export async function POST(req: Request) {
   const userMessage: Anthropic.Beta.Messages.BetaMessageParam = { role: "user", content: parsed.data.message };
 
   const encoder = new TextEncoder();
+  let saved = false;
+  let markDone!: () => void;
+  const streamDone = new Promise<void>((resolve) => (markDone = resolve));
+  // Memória episódica: resume a conversa depois que a resposta terminou (não atrasa o streaming)
+  after(async () => {
+    await streamDone;
+    if (!saved) return;
+    await summarizeConversation(createAdminClient(), workspaceId as string, conversationId!).catch((e) =>
+      console.error("resumo da conversa falhou", e),
+    );
+  });
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (e: JarvisEvent | { type: "meta" | "done"; conversationId: string }) =>
-        controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"));
+      // Se o cliente fechou a aba, enqueue lança; seguimos para salvar a conversa mesmo assim
+      const send = (e: JarvisEvent | { type: "meta" | "done"; conversationId: string }) => {
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"));
+        } catch {}
+      };
       send({ type: "meta", conversationId: conversationId! });
       try {
         const { newMessages } = await runJarvis({ db: supabase, workspaceId }, [...history, userMessage], send);
@@ -63,11 +81,15 @@ export async function POST(req: Request) {
         }));
         await supabase.from("messages").insert(toSave);
         await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
+        saved = true;
       } catch (err) {
         send({ type: "error", message: err instanceof Error ? err.message : String(err) });
       }
       send({ type: "done", conversationId: conversationId! });
-      controller.close();
+      try {
+        controller.close();
+      } catch {}
+      markDone();
     },
   });
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });

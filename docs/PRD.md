@@ -29,7 +29,7 @@ PKM que se organiza sozinho, sem manter pastas e tags na mão.
 | 1. Captura + notas | Bot Telegram (texto/áudio/foto/link/PDF), pipeline, notas atômicas, entidades, Inbox, editor com wikilinks/backlinks | ✅ |
 | 2. Busca + Jarvis | Embeddings automáticos, busca híbrida RRF, chat com tools e citações, perfil cacheado, `/p` no Telegram | ✅ |
 | 3. Grafo | Grafo global Sigma (cores, tamanho, filtros, comunidades), foco local, timeline, sugestões destacadas | ✅ |
-| 4. Inteligência contínua | Link-suggester com relações tipadas ✅, lint semanal ✅, MOCs propostos ✅, servidor MCP ✅, brief diário ⏳, exportação Markdown/git ⏳ | 🟡 |
+| 4. Inteligência contínua | Link-suggester com relações tipadas, lint semanal, MOCs propostos, servidor MCP, brief diário/semanal, exportação Markdown (Obsidian), fontes longas com RAG, memória episódica, autocomplete `[[` | ✅ (backup automático em git ⏳) |
 | 5. Multicanal + "JARVIS" | WhatsApp, e-mail, share target PWA, voz bidirecional, grafo 3D, modo "preparar reunião" | ⏳ |
 | 6. Produto (SaaS) | Onboarding, convites, billing, limites por plano, LGPD, Vercel Pro | ⏳ (base pronta: workspaces, RLS, `ai_usage`) |
 
@@ -45,6 +45,9 @@ PKM que se organiza sozinho, sem manter pastas e tags na mão.
 - **RF9** Chat com tools (busca híbrida + 1 salto no grafo), citações `[[Título]]`, confirmação para escrita.
 - **RF10** Mesmas tools via servidor MCP remoto com token por workspace.
 - **RF11** Lint semanal: duplicatas, órfãs, clusters sem MOC, lembrete de sementes antigas.
+- **RF12** Brief diário/semanal no Telegram com aprendizados, conexões, pendências e uma sugestão "Express".
+- **RF13** Exportação completa para Markdown compatível com Obsidian (frontmatter + conexões `relação:: [[Nota]]`).
+- **RF14** Fontes longas: chunks para RAG e extração em partes; memória episódica das conversas.
 
 ## Requisitos não funcionais
 - Isolamento total entre workspaces (RLS + testes automatizados).

@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
+import { unzipSync, strFromU8 } from "fflate";
 import { startMockServer, telegramSent, anthropicCalls } from "./mock-providers.mjs";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -197,6 +198,38 @@ async function main() {
     assert.ok(usage >= 3, "uso de IA registrado por workspace");
   });
 
+
+  await step("fonte longa vira chunks com embedding (RAG)", async () => {
+    const before = telegramSent.length;
+    const paragraph = "Neste capítulo o autor explica como a cadência de prospecção deve combinar e-mail, telefone e LinkedIn. ";
+    const long = Array.from({ length: 110 }, (_, i) => `Seção ${i}. ${paragraph}`).join("\n\n");
+    await telegram(tgMessage(long));
+    await waitFor(() => telegramSent.slice(before).find((m) => /Registrei/.test(m.text)), { timeout: 30_000 });
+    // (filtrar por raw_text com 12 mil caracteres estoura a URL do PostgREST: pega a fonte mais recente)
+    const { data: src } = await admin
+      .from("sources")
+      .select("id, raw_text")
+      .eq("workspace_id", workspaceId)
+      .order("captured_at", { ascending: false })
+      .limit(1)
+      .single();
+    assert.equal(src.raw_text, long);
+    const { data: chunks } = await admin.from("chunks").select("ordinal, embedding").eq("source_id", src.id).order("ordinal");
+    assert.ok(chunks.length >= 5, `chunks: ${chunks.length}`);
+    assert.ok(chunks.every((c) => c.embedding), "todo chunk tem embedding");
+  });
+
+  await step("/brief no Telegram e worker de brief (cron)", async () => {
+    const before = telegramSent.length;
+    await telegram(tgMessage("/brief"));
+    const reply = await waitFor(() => telegramSent.slice(before).find((m) => /Brief de teste/.test(m.text)));
+    assert.match(reply.text, /\/inbox$/);
+    assert.equal((await fetch(`${APP}/api/workers/brief?periodo=dia`, { method: "POST" })).status, 401);
+    const r = await fetch(`${APP}/api/workers/brief?periodo=semana`, { method: "POST", headers: { Authorization: `Bearer ${CRON_SECRET}` } });
+    const report = await r.json();
+    assert.equal(report[workspaceId], "enviado");
+  });
+
   await step("API do grafo devolve snapshot e salva posições", async () => {
     const r = await fetch(`${APP}/api/graph`, { headers: { cookie } });
     const snap = await r.json();
@@ -234,6 +267,37 @@ async function main() {
     assert.equal(chatCall.tools, 11);
   });
 
+  await step("memória episódica: conversa resumida com embedding após o chat", async () => {
+    const { data } = await waitFor(async () => {
+      const r = await admin.from("conversations").select("summary, embedding").eq("workspace_id", workspaceId).not("summary", "is", null);
+      return r.data?.length ? r : null;
+    });
+    assert.match(data[0].summary, /cadência/);
+    assert.ok(data[0].embedding);
+  });
+
+  await step("exportação: zip no formato do Obsidian", async () => {
+    const r = await fetch(`${APP}/api/export`, { headers: { cookie } });
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get("content-type"), "application/zip");
+    const files = unzipSync(new Uint8Array(await r.arrayBuffer()));
+    const names = Object.keys(files);
+    assert.ok(names.includes("LEIA-ME.md"));
+    const insight = names.find((n) => n.startsWith("Insights/Cadência de oito toques"));
+    assert.ok(insight, names.join(", "));
+    const md = strFromU8(files[insight]);
+    assert.match(md, /^---\njarvis_id: /);
+    assert.match(md, /aprendido_em:: \[\[RD Summit 2026\]\]/);
+    assert.ok(names.includes("Eventos/RD Summit 2026.md"));
+    assert.equal((await fetch(`${APP}/api/export`)).status, 401);
+  });
+
+  await step("autocomplete de [[ busca títulos (só do próprio workspace)", async () => {
+    const r = await fetch(`${APP}/api/notes/titles?q=cad`, { headers: { cookie } });
+    const titles = (await r.json()).map((n) => n.title);
+    assert.ok(titles.some((t) => t.startsWith("Cadência de oito toques")), titles.join(", "));
+  });
+
   await step("servidor MCP: token, tools/list, tools/call e token inválido", async () => {
     const token = "jv_e2e_" + randomUUID();
     await userClient.from("api_tokens").insert({ workspace_id: workspaceId, name: "e2e", token_hash: createHash("sha256").update(token).digest("hex") });
@@ -260,6 +324,10 @@ async function main() {
     assert.equal(snap.nodes.length, 0);
     const page = await fetch(`${APP}/notes/${insightId}`, { headers: { cookie: c2 } });
     assert.equal(page.status, 404);
+    const titles = await (await fetch(`${APP}/api/notes/titles?q=cad`, { headers: { cookie: c2 } })).json();
+    assert.equal(titles.length, 0, "autocomplete não pode vazar títulos");
+    const files = unzipSync(new Uint8Array(await (await fetch(`${APP}/api/export`, { headers: { cookie: c2 } })).arrayBuffer()));
+    assert.deepEqual(Object.keys(files), ["LEIA-ME.md"], "exportação não pode vazar notas");
   });
 
   try {

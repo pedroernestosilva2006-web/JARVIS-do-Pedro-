@@ -26,9 +26,10 @@ export type CaptureCommand =
   | { command: "conectar"; arg: string }
   | { command: "start"; arg: string }
   | { command: "ajuda"; arg: "" }
-  | { command: "pergunta"; arg: string };
+  | { command: "pergunta"; arg: string }
+  | { command: "brief"; arg: "dia" | "semana" };
 
-const COMMANDS = new Set(["evento", "livro", "fim", "conectar", "start", "ajuda", "help", "pergunta", "p"]);
+const COMMANDS = new Set(["evento", "livro", "fim", "conectar", "start", "ajuda", "help", "pergunta", "p", "brief", "resumo"]);
 
 /** Interpreta comandos do bot: /evento RD Summit 2026, /livro Receita Previsível, /fim, /p <pergunta>… */
 export function parseCommand(text: string | undefined): CaptureCommand | null {
@@ -47,6 +48,9 @@ export function parseCommand(text: string | undefined): CaptureCommand | null {
     case "p":
     case "pergunta":
       return { command: "pergunta", arg };
+    case "brief":
+    case "resumo":
+      return { command: "brief", arg: /^sem/i.test(arg) ? "semana" : "dia" };
     default:
       return { command: cmd as "evento" | "livro" | "conectar" | "start", arg };
   }
