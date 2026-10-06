@@ -43,6 +43,7 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 - Comparar `vector` dentro de função com `search_path=''` falha (operador não resolvido): use `embedded_at`.
 - `auth.uid()` em testes SQL: defina `request.jwt.claims` (JSON com `sub`), não `request.jwt.sub`.
 - Fila pgmq real usa tabelas `pgmq.q_<fila>`.
+- MCP do Supabase: `apply_migration` com `drop`/`delete` pede confirmação e expira em 60 s; evite `drop` em migrations.
 - Cores com alfa em arestas WebGL (Sigma) variam por GPU: use cores opacas pré-misturadas.
 - Arquivos `"use server"` só podem exportar funções async.
 - `after()` deve ser chamado no corpo do handler; para esperar um stream, use uma promise resolvida no fim dele.

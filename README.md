@@ -54,4 +54,5 @@ Para ver os dados do seed, associe seu usuário ao workspace de exemplo (instru�
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): diagrama, fluxo e ADRs
 - [`docs/TAXONOMY.md`](docs/TAXONOMY.md): tipos, relações e regras de atomização
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): checklist de deploy e próximos passos
+- [`docs/DEPLOY.md`](docs/DEPLOY.md): estado atual do deploy (Supabase no ar, pendências da Vercel)
 - [`CLAUDE.md`](CLAUDE.md): contexto permanente para o Claude Code (+ `.claude/agents` e `.claude/skills`)

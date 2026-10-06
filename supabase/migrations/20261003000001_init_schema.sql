@@ -341,7 +341,7 @@ begin
   foreach t in array array[
     'sources', 'notes', 'note_sources', 'links', 'chunks', 'tags', 'note_tags',
     'memories', 'conversations', 'messages', 'channel_identities', 'channel_link_codes',
-    'capture_sessions', 'review_items', 'ai_usage', 'api_tokens'
+    'capture_sessions', 'review_items', 'api_tokens'
   ] loop
     execute format('alter table public.%I enable row level security', t);
     execute format(
@@ -352,7 +352,7 @@ begin
 end $$;
 
 -- ai_usage é escrito só pelo servidor; usuários apenas leem
-drop policy "membros acessam ai_usage do workspace" on public.ai_usage;
+alter table public.ai_usage enable row level security;
 create policy "membros leem ai_usage do workspace" on public.ai_usage
   for select to authenticated using (workspace_id in (select private.user_workspace_ids()));
 
