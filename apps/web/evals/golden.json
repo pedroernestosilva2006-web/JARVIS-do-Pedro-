@@ -1,0 +1,117 @@
+[
+  {
+    "id": "evento-audio-outbound",
+    "kind": "audio",
+    "session": { "type": "evento", "title": "RD Summit 2026" },
+    "text": "É... saindo agora da palestra do Aaron Ross aqui no RD Summit. Ele falou uma coisa que me pegou: a maioria das respostas em outbound vem depois do quarto toque, então cadência de três toques é jogar dinheiro fora. Tipo, ele recomenda oito toques em duas semanas misturando e-mail, LinkedIn e telefone. Outra coisa: separar SDR de closer não é só organograma, é o que dá previsibilidade, porque cada etapa ganha uma métrica clara. Preciso revisar a cadência do nosso SDR de IA amanhã.",
+    "expect": {
+      "capture_type": ["evento"],
+      "min_insights": 2,
+      "max_insights": 4,
+      "entities": ["Aaron Ross"],
+      "action_items_min": 1
+    }
+  },
+  {
+    "id": "livro-pagina-spin",
+    "kind": "image",
+    "session": { "type": "livro", "title": "SPIN Selling" },
+    "text": ">> Nas vendas grandes, as perguntas de implicação são as que mais se correlacionam com o sucesso.\nO vendedor que explora as consequências de um problema faz o cliente sentir o custo de não agir. Perguntas de necessidade de solução, por sua vez, fazem o cliente verbalizar os benefícios.\nNeil Rackham, SPIN Selling, p. 87",
+    "expect": {
+      "capture_type": ["livro"],
+      "min_insights": 1,
+      "max_insights": 3,
+      "entities": ["Neil Rackham"]
+    }
+  },
+  {
+    "id": "ideia-produto",
+    "kind": "text",
+    "session": null,
+    "text": "Ideia: um agente de IA que liga para leads de clínicas odontológicas em até 5 minutos depois do formulário, qualifica com 3 perguntas e agenda a avaliação direto na agenda da clínica. Cobrar por avaliação agendada.",
+    "expect": {
+      "capture_type": ["ideia"],
+      "min_insights": 0,
+      "max_insights": 2,
+      "min_ideas": 1
+    }
+  },
+  {
+    "id": "reflexao-lideranca",
+    "kind": "text",
+    "session": null,
+    "text": "Percebi hoje na reunião de time que quando eu dou a resposta pronta, o time para de pensar. Nas duas vezes que só fiz perguntas, o Lucas chegou numa solução melhor que a minha. Liderar é mais perguntar do que responder.",
+    "expect": {
+      "capture_type": ["reflexao", "conversa"],
+      "min_insights": 1,
+      "max_insights": 2
+    }
+  },
+  {
+    "id": "trivial",
+    "kind": "text",
+    "session": null,
+    "text": "ok, teste",
+    "expect": { "capture_type": ["reflexao"], "min_insights": 0, "max_insights": 0 }
+  },
+  {
+    "id": "slide-evento",
+    "kind": "image",
+    "session": { "type": "evento", "title": "SaaStr Brasil 2026" },
+    "text": "Slide: \"CAC payback < 12 meses = crescimento saudável\". Gráfico de barras mostrando empresas com payback acima de 18 meses crescendo 40% menos. Palestrante: Mariana Souza, CFO da Fintech X.",
+    "expect": {
+      "capture_type": ["evento"],
+      "min_insights": 1,
+      "max_insights": 2,
+      "entities": ["Mariana Souza"]
+    }
+  },
+  {
+    "id": "citacao",
+    "kind": "text",
+    "session": null,
+    "text": "\"Pessoas não compram o que você faz, compram o porquê você faz.\" — Simon Sinek. Usar isso na abertura do pitch para clínicas.",
+    "expect": {
+      "min_insights": 0,
+      "max_insights": 2,
+      "min_quotes": 1,
+      "entities": ["Simon Sinek"]
+    }
+  },
+  {
+    "id": "conversa-cliente",
+    "kind": "audio",
+    "session": null,
+    "text": "Acabei de falar com a doutora Paula da clínica Sorriso. Ela disse que o maior problema não é gerar lead, é que a recepção demora para responder e o lead esfria. Ela pagaria por algo que responde no WhatsApp na hora. Ficou de me mandar o volume de leads por mês.",
+    "expect": {
+      "capture_type": ["conversa"],
+      "min_insights": 1,
+      "max_insights": 3,
+      "entities": ["Paula"]
+    }
+  },
+  {
+    "id": "artigo-web",
+    "kind": "link",
+    "session": null,
+    "text": "# Por que o follow-up rápido importa\n\nUm estudo da Harvard Business Review com 2.241 empresas mostrou que firmas que tentaram contato com leads em até uma hora tiveram quase 7 vezes mais chances de qualificar o lead do que as que esperaram mais de uma hora. Ainda assim, 37% das empresas responderam em até uma hora e 24% levaram mais de 24 horas.",
+    "expect": {
+      "capture_type": ["conteudo_web"],
+      "min_insights": 1,
+      "max_insights": 3,
+      "entities": ["Harvard Business Review"]
+    }
+  },
+  {
+    "id": "evento-multiplas-pessoas",
+    "kind": "audio",
+    "session": { "type": "evento", "title": "RD Summit 2026" },
+    "text": "Painel de IA em vendas com o Paulo Silva da RD Station e a Camila Rocha da Pipefy. O Paulo disse que o primeiro e-mail escrito por IA com pesquisa do lead dobra a taxa de resposta. A Camila discordou em parte: disse que sem dados limpos no CRM a IA personaliza errado e queima a lista.",
+    "expect": {
+      "capture_type": ["evento"],
+      "min_insights": 2,
+      "max_insights": 4,
+      "entities": ["Paulo Silva", "Camila Rocha"]
+    }
+  }
+]

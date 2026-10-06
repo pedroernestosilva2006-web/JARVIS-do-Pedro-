@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm lint)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm test)",
+      "Bash(pnpm --filter web test:e2e)",
+      "Bash(supabase status)",
+      "Bash(supabase db reset)",
+      "Bash(supabase db lint:*)",
+      "Bash(supabase migration new:*)"
+    ]
+  }
+}
