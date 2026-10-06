@@ -7,17 +7,19 @@ import louvain from "graphology-communities-louvain";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import type Sigma from "sigma";
-import { NOTE_TYPES, TYPE_COLORS, TYPE_LABELS, communityColor, nodeColor, nodeSize, type NoteType } from "@jarvis/core";
+import { NOTE_TYPES, TYPE_COLORS, TYPE_LABELS, TYPE_TONES, communityColor, nodeColor, nodeSize, nodeTone, type NoteType } from "@jarvis/core";
+import { CheckerMark } from "@/components/brand/motifs";
 import type { GraphSnapshot } from "@/lib/types";
 
-type ColorMode = "type" | "community";
+type ColorMode = "mono" | "type" | "community";
 
 // Cores opacas (pré-misturadas com o fundo #1e1e1e): alfa em arestas WebGL varia entre GPUs
-const EDGE_COLOR = "#3a3a3a";
-const EDGE_SUGGESTED = "#5a4a86";
-const EDGE_HIGHLIGHT = "#a0a0a0";
-const EDGE_SUGGESTED_HIGHLIGHT = "#9b7fe6";
-const DIM_NODE = "#333333";
+const EDGE_COLOR = "#2a2a2a";
+const EDGE_SUGGESTED = "#4a1d1b";
+const EDGE_HIGHLIGHT = "#bdbdbd";
+const EDGE_SUGGESTED_HIGHLIGHT = "#e5322d";
+const DIM_NODE = "#262626";
+const SIGNAL = "#e5322d";
 
 /**
  * Grafo global estilo Obsidian (WebGL / Sigma.js + Graphology):
@@ -34,7 +36,7 @@ export function GraphView({ focusId }: { focusId?: string }) {
 
   const [snapshot, setSnapshot] = useState<GraphSnapshot | null>(null);
   const [error, setError] = useState("");
-  const [colorMode, setColorMode] = useState<ColorMode>("type");
+  const [colorMode, setColorMode] = useState<ColorMode>("mono");
   const [hiddenTypes, setHiddenTypes] = useState<Set<NoteType>>(new Set());
   const [hideOrphans, setHideOrphans] = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
@@ -76,13 +78,19 @@ export function GraphView({ focusId }: { focusId?: string }) {
       if (!g || g.order === 0) return;
       layoutRef.current?.kill();
       const settings = forceAtlas2.inferSettings(g);
-      const layout = new FA2Layout(g, { settings: { ...settings, barnesHutOptimize: g.order > 500, slowDown: 5 } });
+      // Gravidade forte: componentes desconectados (ex.: um livro isolado) não se afastam do centro
+      const layout = new FA2Layout(g, {
+        settings: { ...settings, strongGravityMode: true, gravity: 0.6, barnesHutOptimize: g.order > 500, slowDown: 5 },
+      });
       layoutRef.current = layout;
       layout.start();
       setLayoutRunning(true);
       setTimeout(() => {
         layout.stop();
         setLayoutRunning(false);
+        // As posições mudaram: recentraliza a câmera no grafo inteiro
+        sigmaRef.current?.refresh();
+        sigmaRef.current?.getCamera().animatedReset({ duration: 500 });
         void savePositions();
       }, ms);
     },
@@ -106,6 +114,7 @@ export function GraphView({ focusId }: { focusId?: string }) {
         degree: n.degree,
         createdAt: new Date(n.created_at).getTime(),
         typeColor: nodeColor(n.type),
+        toneColor: nodeTone(n.type),
       });
     }
     for (const e of snapshot.edges) {
@@ -129,19 +138,21 @@ export function GraphView({ focusId }: { focusId?: string }) {
         renderEdgeLabels: false,
         enableEdgeEvents: true,
         defaultEdgeColor: EDGE_COLOR,
-        labelColor: { color: "#dcddde" },
+        labelColor: { color: "#d4d4d4" },
         labelSize: 12,
         labelFont: "ui-sans-serif, system-ui, sans-serif",
         labelRenderedSizeThreshold: 7,
         labelDensity: 0.7,
         zIndex: true,
+        stagePadding: 90,
         minCameraRatio: 0.05,
         maxCameraRatio: 10,
         nodeReducer: (node, data) => {
           const f = filtersRef.current;
           const s = stateRef.current;
           const res: Record<string, unknown> = { ...data };
-          res.color = colorModeRef.current === "community" ? (data.communityColor ?? data.typeColor) : data.typeColor;
+          const mode = colorModeRef.current;
+          res.color = mode === "community" ? (data.communityColor ?? data.typeColor) : mode === "type" ? data.typeColor : data.toneColor;
           if (
             f.hiddenTypes.has(data.noteType as NoteType) ||
             (f.hideOrphans && (data.degree as number) === 0) ||
@@ -154,6 +165,7 @@ export function GraphView({ focusId }: { focusId?: string }) {
             if (node === s.hovered || s.neighbors.has(node)) {
               res.zIndex = 1;
               res.forceLabel = true;
+              if (node === s.hovered) res.color = SIGNAL;
             } else {
               res.color = DIM_NODE;
               res.label = "";
@@ -271,7 +283,7 @@ export function GraphView({ focusId }: { focusId?: string }) {
   }, [snapshot]);
 
   return (
-    <div className="relative h-[calc(100vh-52px)] w-full bg-[#1e1e1e] md:h-screen">
+    <div className="relative h-[calc(100vh-52px)] w-full bg-[radial-gradient(ellipse_at_50%_40%,#141414_0%,#0a0a0a_70%)] md:h-screen">
       <div ref={containerRef} className="absolute inset-0" />
 
       {error && <p className="absolute left-4 top-4 text-red-400">Erro ao carregar o grafo: {error}</p>}
@@ -282,23 +294,29 @@ export function GraphView({ focusId }: { focusId?: string }) {
       )}
 
       {/* Painel de controles */}
-      <div className="absolute left-3 top-3 max-h-[calc(100%-24px)] w-64 space-y-3 overflow-y-auto rounded-lg border border-border bg-panel/95 p-3 text-sm shadow-xl">
+      <div className="surface absolute left-3 top-3 max-h-[calc(100%-24px)] w-72 space-y-4 overflow-y-auto rounded-sm p-4 text-sm shadow-2xl">
+        <div className="kicker flex items-center justify-between">
+          <span>03 — Grafo</span>
+          <CheckerMark className="text-foreground/50" />
+        </div>
         <form onSubmit={focusSearch}>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar nó…"
-            className="w-full rounded-md border border-border bg-background px-2 py-1 outline-none focus:border-accent"
+            className="field w-full "
           />
         </form>
         <div className="flex gap-1">
-          {(["type", "community"] as const).map((m) => (
+          {(["mono", "type", "community"] as const).map((m) => (
             <button
               key={m}
               onClick={() => setColorMode(m)}
-              className={`flex-1 rounded px-2 py-1 text-xs ${colorMode === m ? "bg-accent-2 text-white" : "bg-panel-2 text-muted"}`}
+              className={`flex-1 rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.12em] ${
+                colorMode === m ? "bg-foreground text-background" : "border border-border text-muted hover:text-foreground"
+              }`}
             >
-              {m === "type" ? "Cor por tipo" : "Comunidades"}
+              {m === "mono" ? "Mono" : m === "type" ? "Tipo" : "Grupos"}
             </button>
           ))}
         </div>
@@ -315,7 +333,7 @@ export function GraphView({ focusId }: { focusId?: string }) {
                   setHiddenTypes(next);
                 }}
               />
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: TYPE_COLORS[t] }} />
+              <span className="h-2 w-2 rounded-full" style={{ background: colorMode === "type" ? TYPE_COLORS[t] : TYPE_TONES[t] }} />
               {TYPE_LABELS[t]} <span className="ml-auto text-muted">{typeCounts.get(t)}</span>
             </label>
           ))}
@@ -325,39 +343,46 @@ export function GraphView({ focusId }: { focusId?: string }) {
         </label>
         <label className="flex items-center gap-2 text-xs">
           <input type="checkbox" checked={showSuggested} onChange={(e) => setShowSuggested(e.target.checked)} />
-          Mostrar sugestões da IA <span className="ml-auto inline-block h-0.5 w-5 bg-[#9b7fe6]" />
+          Sugestões da IA <span className="ml-auto inline-block h-px w-5 bg-[var(--signal)]" />
         </label>
         <label className="block text-xs text-muted">
           Rótulos (fade por zoom)
           <input type="range" min={0} max={20} value={labelThreshold} onChange={(e) => setLabelThreshold(Number(e.target.value))} className="w-full" />
         </label>
         <div className="flex gap-1">
-          <button onClick={() => runLayout()} disabled={layoutRunning} className="flex-1 rounded bg-panel-2 px-2 py-1 text-xs hover:text-accent disabled:opacity-50">
+          <button onClick={() => runLayout()} disabled={layoutRunning} className="btn-outline flex-1 px-2 py-1.5 !text-[10px] disabled:opacity-50">
             {layoutRunning ? "Organizando…" : "Reorganizar"}
           </button>
-          <button onClick={() => setPlaying(true)} disabled={playing || !timeRange} className="flex-1 rounded bg-panel-2 px-2 py-1 text-xs hover:text-accent disabled:opacity-50">
-            ▶ Ver crescer
+          <button onClick={() => setPlaying(true)} disabled={playing || !timeRange} className="btn-outline flex-1 px-2 py-1.5 !text-[10px] disabled:opacity-50">
+            ▶ Crescer
           </button>
         </div>
         {timeCut != null && <p className="text-xs text-muted">{new Date(timeCut).toLocaleDateString("pt-BR")}</p>}
-        <p className="text-xs text-muted">
-          {snapshot?.nodes.length ?? 0} notas · {snapshot?.edges.length ?? 0} conexões
-        </p>
+        <div className="grid grid-cols-2 gap-px border-t border-border bg-border pt-px">
+          <div className="bg-panel py-2">
+            <div className="display text-lg text-foreground">{snapshot?.nodes.length ?? 0}</div>
+            <div className="kicker">notas</div>
+          </div>
+          <div className="bg-panel py-2 pl-3">
+            <div className="display text-lg text-foreground">{snapshot?.edges.length ?? 0}</div>
+            <div className="kicker">conexões</div>
+          </div>
+        </div>
       </div>
 
       {/* Nó selecionado */}
       {selected && (
-        <div className="absolute right-3 top-3 w-72 rounded-lg border border-border bg-panel/95 p-4 shadow-xl">
-          <div className="mb-1 flex items-center gap-2 text-xs text-muted">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: nodeColor(selected.type) }} />
+        <div className="surface absolute right-3 top-3 w-72 rounded-sm p-4 shadow-2xl">
+          <div className="kicker mb-2 flex items-center gap-2">
+            <span className="h-1.5 w-1.5 bg-[var(--signal)]" />
             {TYPE_LABELS[selected.type] ?? selected.type} · {selected.stage} · {selected.degree} conexões
           </div>
-          <h3 className="font-semibold">{selected.title}</h3>
-          <div className="mt-3 flex gap-3 text-sm">
-            <Link href={`/notes/${selected.id}`} className="text-accent hover:underline">
-              Abrir nota →
+          <h3 className="text-base font-medium leading-snug text-foreground">{selected.title}</h3>
+          <div className="mt-4 flex items-center gap-3 border-t border-border pt-3">
+            <Link href={`/notes/${selected.id}`} className="btn-primary px-3 py-1.5">
+              Abrir nota
             </Link>
-            <button onClick={() => setSelected(null)} className="ml-auto text-muted hover:text-foreground">
+            <button onClick={() => setSelected(null)} className="ml-auto text-[10.5px] uppercase tracking-[0.14em] text-muted hover:text-foreground">
               fechar
             </button>
           </div>
@@ -365,7 +390,7 @@ export function GraphView({ focusId }: { focusId?: string }) {
       )}
 
       {edgeInfo && (
-        <div className="absolute bottom-3 left-1/2 max-w-xl -translate-x-1/2 rounded-md border border-border bg-panel/95 px-3 py-2 text-xs">
+        <div className="surface absolute bottom-3 left-1/2 max-w-xl -translate-x-1/2 rounded-sm px-3 py-2 text-xs">
           {edgeInfo}
         </div>
       )}

@@ -7,6 +7,8 @@ pela web. O JARVIS transforma cada entrada em **notas atômicas conectadas**, mo
 **Stack:** Next.js 16 · Supabase (Postgres, pgvector, pgmq, pg_cron, Storage, Auth, RLS) · Claude (Haiku 4.5 na
 ingestão, Sonnet 5.5 no chat) · OpenAI (embeddings + transcrição) · Sigma.js + Graphology · Vercel.
 
+![Login do JARVIS](docs/img/login.png)
+
 ![Grafo do JARVIS (dados de exemplo)](docs/img/grafo.png)
 
 ## O que já funciona

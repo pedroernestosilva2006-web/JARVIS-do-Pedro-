@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/brand/motifs";
 import { ChangePassword } from "@/components/settings/ChangePassword";
 import { McpTokenCreator, TelegramPairing } from "@/components/settings/SecretsPanel";
 import { Button, Card, timeAgo } from "@/components/ui";
@@ -26,22 +27,27 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
-      <h1 className="text-2xl font-bold">Configurações</h1>
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-6 md:px-10 md:py-10">
+      <PageHeader
+        index="06 — Ajustes"
+        section="Conta · Canais · Dados"
+        title="Configurações"
+        subtitle="Perfil do Jarvis, senha, Telegram, acesso via MCP, backup e uso de IA."
+      />
 
       <Card title="Perfil (contexto fixo do Jarvis)">
         <form action={saveProfileAction} className="space-y-2">
           <input
             name="name"
             defaultValue={ws?.name ?? ""}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+            className="field w-full text-sm "
           />
           <textarea
             name="profile_md"
             defaultValue={ws?.profile_md ?? ""}
             rows={8}
             placeholder="Quem você é, objetivos, estilo de resposta preferido, metas do ano…"
-            className="w-full rounded-md border border-border bg-background p-3 font-mono text-sm outline-none focus:border-accent"
+            className="field w-full font-mono text-sm "
           />
           <Button variant="primary">Salvar perfil</Button>
         </form>
@@ -89,7 +95,7 @@ export default async function SettingsPage() {
         <p className="mb-3 text-sm text-muted">
           Baixe todas as notas como um vault do Obsidian: um arquivo .md por nota, com frontmatter e conexões.
         </p>
-        <a href="/api/export" className="inline-block rounded-md bg-accent-2 px-3 py-1.5 text-sm text-white hover:bg-accent">
+        <a href="/api/export" className="inline-block btn-primary px-3 py-1.5">
           Baixar backup (.zip)
         </a>
       </Card>

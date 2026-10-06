@@ -11,7 +11,7 @@ export function TelegramPairing({ botUsername }: { botUsername?: string }) {
       <button
         disabled={pending}
         onClick={() => start(async () => setCode(await createPairingCodeAction()))}
-        className="rounded-md bg-accent-2 px-3 py-1.5 text-white hover:bg-accent disabled:opacity-50"
+        className="btn-primary px-3 py-1.5 disabled:opacity-50"
       >
         Gerar código de pareamento
       </button>
@@ -44,12 +44,12 @@ export function McpTokenCreator({ appUrl }: { appUrl: string }) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="flex-1 rounded-md border border-border bg-background px-2 py-1 outline-none focus:border-accent"
+          className="field flex-1 "
         />
         <button
           disabled={pending}
           onClick={() => start(async () => setToken(await createApiTokenAction(name)))}
-          className="rounded-md bg-accent-2 px-3 py-1.5 text-white hover:bg-accent disabled:opacity-50"
+          className="btn-primary px-3 py-1.5 disabled:opacity-50"
         >
           Gerar token
         </button>

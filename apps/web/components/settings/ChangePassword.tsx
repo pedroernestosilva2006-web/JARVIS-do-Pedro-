@@ -24,12 +24,12 @@ export function ChangePassword() {
     setMsg({ ok: true, text: "Senha atualizada." });
   }
 
-  const field = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
+  const field = "field text-sm";
   return (
     <form onSubmit={submit} className="space-y-2" noValidate>
       <input type="password" autoComplete="new-password" placeholder="Nova senha" value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
       <input type="password" autoComplete="new-password" placeholder="Repita a nova senha" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={field} />
-      <button disabled={busy} className="rounded-md bg-accent-2 px-3 py-1.5 text-sm text-white hover:bg-accent disabled:opacity-50">
+      <button disabled={busy} className="btn-primary px-3 py-1.5 disabled:opacity-50">
         {busy ? "Salvando…" : "Salvar senha"}
       </button>
       {msg && <p className={`text-sm ${msg.ok ? "text-green-400" : "text-red-400"}`}>{msg.text}</p>}

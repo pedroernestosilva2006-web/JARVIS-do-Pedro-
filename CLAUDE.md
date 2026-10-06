@@ -45,6 +45,8 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 - Fila pgmq real usa tabelas `pgmq.q_<fila>`.
 - MCP do Supabase: `apply_migration` com `drop`/`delete` pede confirmação e expira em 60 s; evite `drop` em migrations.
 - Cores com alfa em arestas WebGL (Sigma) variam por GPU: use cores opacas pré-misturadas.
+- ForceAtlas2 sem `strongGravityMode` espalha componentes desconectados; e a câmera precisa de `animatedReset` após o layout.
+- Visual: tokens em `globals.css` (monocromático + `--signal` vermelho), classes `.display`, `.kicker`, `.surface`, `.btn-primary`, `.field`; motivos em `components/brand/motifs.tsx`.
 - Arquivos `"use server"` só podem exportar funções async.
 - `after()` deve ser chamado no corpo do handler; para esperar um stream, use uma promise resolvida no fim dele.
 - Filtrar PostgREST por texto muito longo (`.eq("raw_text", …)`) estoura a URL: filtre por id/data.

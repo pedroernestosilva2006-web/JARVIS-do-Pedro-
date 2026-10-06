@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NOTE_TYPES, TYPE_LABELS, isNoteType } from "@jarvis/core";
+import { PageHeader } from "@/components/brand/motifs";
 import { Card, NoteLink, StageBadge, TypeBadge, timeAgo } from "@/components/ui";
 import { requireWorkspace } from "@/lib/workspace";
 import { createNoteAction } from "../actions";
@@ -42,38 +43,40 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Notas</h1>
-          <p className="text-sm text-muted">Tudo é nota: insights, pessoas, livros, eventos, ideias, MOCs.</p>
-        </div>
+    <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 md:px-10 md:py-10">
+      <PageHeader
+        index="02 — Notas"
+        section="Atômicas · Conectadas"
+        title="Tudo é nota"
+        subtitle="Insights, pessoas, livros, eventos, ideias e MOCs. Busque, filtre ou crie uma nova."
+        actions={
         <form action={createNoteAction} className="flex gap-2">
-          <select name="type" defaultValue="insight" className="rounded-md border border-border bg-panel px-2 text-sm">
-            {NOTE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {TYPE_LABELS[t]}
-              </option>
-            ))}
-          </select>
-          <input
-            name="title"
-            required
-            placeholder="Título da nova nota"
-            className="rounded-md border border-border bg-panel px-3 py-1.5 text-sm outline-none focus:border-accent"
-          />
-          <button className="rounded-md bg-accent-2 px-3 text-sm text-white hover:bg-accent">Criar</button>
-        </form>
-      </header>
+            <select name="type" defaultValue="insight" className="field !w-auto !py-1.5 text-sm">
+              {NOTE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+            <input
+              name="title"
+              required
+              placeholder="Título da nova nota"
+              className="field text-sm "
+            />
+            <button className="btn-primary px-3">Criar</button>
+          </form>
+        }
+      />
 
       <form className="flex flex-wrap gap-2">
         <input
           name="q"
           defaultValue={q}
           placeholder="Buscar…"
-          className="flex-1 rounded-md border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-accent"
+          className="field flex-1 text-sm "
         />
-        <select name="type" defaultValue={typeFilter ?? ""} className="rounded-md border border-border bg-panel px-2 text-sm">
+        <select name="type" defaultValue={typeFilter ?? ""} className="field !w-auto !py-1.5 text-sm">
           <option value="">Todos os tipos</option>
           {NOTE_TYPES.map((t) => (
             <option key={t} value={t}>
@@ -81,7 +84,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
             </option>
           ))}
         </select>
-        <button className="rounded-md border border-border px-3 text-sm hover:border-accent">Buscar</button>
+        <button className="btn-outline px-4">Buscar</button>
         {(q || typeFilter) && (
           <Link href="/notes" className="self-center text-xs text-muted hover:text-foreground">
             limpar

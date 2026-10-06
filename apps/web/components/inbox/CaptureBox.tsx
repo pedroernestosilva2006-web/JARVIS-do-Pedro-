@@ -38,7 +38,7 @@ export function CaptureBox() {
         onChange={(e) => setText(e.target.value)}
         rows={3}
         placeholder="O que você aprendeu? Cole um link, escreva uma ideia, um insight de evento…"
-        className="w-full resize-y rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-accent"
+        className="field w-full resize-y text-sm "
       />
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -46,9 +46,9 @@ export function CaptureBox() {
           type="file"
           accept="audio/*,image/*,application/pdf"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="text-xs text-muted file:mr-2 file:rounded file:border-0 file:bg-panel-2 file:px-2 file:py-1 file:text-foreground"
+          className="text-xs text-muted"
         />
-        <button className="ml-auto rounded-md bg-accent-2 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent">
+        <button className="ml-auto btn-primary px-3 py-1.5">
           Capturar
         </button>
       </div>

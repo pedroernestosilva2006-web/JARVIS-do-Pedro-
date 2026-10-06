@@ -1,38 +1,25 @@
 import Link from "next/link";
+import { CheckerMark, JarvisMark } from "@/components/brand/motifs";
+import { NavLinks } from "@/components/brand/NavLinks";
 import { requireWorkspace } from "@/lib/workspace";
 import { signOut } from "./actions";
-
-const NAV = [
-  { href: "/inbox", label: "Inbox", icon: "📥" },
-  { href: "/notes", label: "Notas", icon: "🗒️" },
-  { href: "/graph", label: "Grafo", icon: "🕸️" },
-  { href: "/chat", label: "Jarvis", icon: "💬" },
-  { href: "/timeline", label: "Timeline", icon: "📅" },
-  { href: "/settings", label: "Configurações", icon: "⚙️" },
-];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = await requireWorkspace();
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="flex shrink-0 flex-row items-center gap-1 overflow-x-auto border-b border-border bg-panel px-2 py-2 md:w-52 md:flex-col md:items-stretch md:border-b-0 md:border-r md:px-3 md:py-4">
-        <Link href="/inbox" className="mr-2 whitespace-nowrap px-2 text-lg font-bold md:mb-4 md:mr-0">
-          <span className="text-accent">●</span> JARVIS
+      <aside className="sticky top-0 z-20 flex shrink-0 flex-row items-center gap-2 overflow-x-auto border-b border-border bg-background/95 px-3 py-2 backdrop-blur md:h-screen md:w-56 md:flex-col md:items-stretch md:gap-0 md:overflow-visible md:border-b-0 md:border-r md:px-5 md:py-6">
+        <Link href="/inbox" className="mr-2 flex shrink-0 items-center gap-2.5 text-foreground md:mb-10 md:mr-0">
+          <JarvisMark className="h-6 w-6" />
+          <span className="display text-[13px] tracking-[0.2em]">Jarvis</span>
         </Link>
-        {NAV.map((n) => (
-          <Link
-            key={n.href}
-            href={n.href}
-            className="whitespace-nowrap rounded-md px-2 py-1.5 text-sm text-muted hover:bg-panel-2 hover:text-foreground"
-          >
-            <span className="mr-2">{n.icon}</span>
-            {n.label}
-          </Link>
-        ))}
-        <div className="ml-auto md:mt-auto md:ml-0">
-          <p className="hidden truncate px-2 text-xs text-muted md:block">{user.email}</p>
+        <div className="kicker mb-3 hidden md:block">Segundo cérebro</div>
+        <NavLinks />
+        <div className="ml-auto flex items-center gap-3 md:mt-auto md:ml-0 md:block">
+          <CheckerMark className="mb-4 hidden text-foreground/50 md:block" />
+          <p className="hidden truncate text-[11px] text-muted md:block">{user.email}</p>
           <form action={signOut}>
-            <button className="px-2 py-1 text-xs text-muted hover:text-foreground">Sair</button>
+            <button className="text-[11px] uppercase tracking-[0.18em] text-muted hover:text-foreground md:mt-2">Sair</button>
           </form>
         </div>
       </aside>

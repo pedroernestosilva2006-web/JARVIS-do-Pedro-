@@ -1,38 +1,48 @@
 import Link from "next/link";
-import { TYPE_COLORS, TYPE_LABELS, isNoteType } from "@jarvis/core";
+import { TYPE_LABELS, TYPE_TONES, isNoteType } from "@jarvis/core";
+
+function tone(type?: string) {
+  return type && isNoteType(type) ? TYPE_TONES[type] : "#808080";
+}
 
 export function TypeBadge({ type }: { type: string }) {
-  const color = isNoteType(type) ? TYPE_COLORS[type] : "#888";
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-xs text-muted">
-      <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[10.5px] uppercase tracking-[0.14em] text-muted">
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone(type) }} />
       {isNoteType(type) ? TYPE_LABELS[type] : type}
     </span>
   );
 }
 
 export function StageBadge({ stage }: { stage: string }) {
-  const icon = stage === "perene" ? "🌳" : stage === "broto" ? "🌿" : "🌱";
-  return <span className="text-xs text-muted" title={stage}>{icon} {stage}</span>;
+  const filled = stage === "perene" ? 3 : stage === "broto" ? 2 : 1;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.14em] text-muted" title={`estágio: ${stage}`}>
+      <span className="flex gap-0.5">
+        {[1, 2, 3].map((i) => (
+          <span key={i} className={`h-1.5 w-1.5 ${i <= filled ? "bg-foreground" : "bg-border-strong"}`} />
+        ))}
+      </span>
+      {stage}
+    </span>
+  );
 }
 
 export function NoteLink({ id, title, type }: { id: string; title: string; type?: string }) {
   return (
-    <Link href={`/notes/${id}`} className="group inline-flex items-center gap-2 hover:text-accent">
-      {type && (
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: isNoteType(type) ? TYPE_COLORS[type] : "#888" }} />
-      )}
-      <span className="group-hover:underline">{title}</span>
+    <Link href={`/notes/${id}`} className="group inline-flex items-center gap-2 text-foreground">
+      {type && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: tone(type) }} />}
+      <span className="underline decoration-transparent underline-offset-4 transition group-hover:decoration-[var(--signal)]">{title}</span>
     </Link>
   );
 }
 
 export function Card({ title, children, actions }: { title?: string; children: React.ReactNode; actions?: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-border bg-panel p-4">
+    <section className="surface rounded-sm p-5">
       {(title || actions) && (
-        <div className="mb-3 flex items-center justify-between gap-2">
-          {title && <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{title}</h2>}
+        <div className="mb-4 flex items-center justify-between gap-2 border-b border-border pb-3">
+          {title && <h2 className="kicker">{title}</h2>}
           {actions}
         </div>
       )}
@@ -47,13 +57,13 @@ export function Button({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "default" | "primary" | "danger" | "ghost" }) {
   const styles = {
-    default: "border border-border bg-panel-2 hover:border-accent",
-    primary: "bg-accent-2 text-white hover:bg-accent",
-    danger: "border border-red-900 text-red-300 hover:bg-red-950",
-    ghost: "text-muted hover:text-foreground",
+    default: "btn-outline px-3 py-1.5",
+    primary: "btn-primary px-3.5 py-1.5",
+    danger: "btn-outline px-3 py-1.5 !border-[var(--signal)]/50 !text-[var(--signal)]",
+    ghost: "px-2 py-1 text-[11px] uppercase tracking-[0.14em] text-muted hover:text-foreground",
   }[variant];
   return (
-    <button {...props} className={`rounded-md px-2.5 py-1 text-sm disabled:opacity-50 ${styles} ${props.className ?? ""}`}>
+    <button {...props} className={`disabled:opacity-50 ${styles} ${props.className ?? ""}`}>
       {children}
     </button>
   );

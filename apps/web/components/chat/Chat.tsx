@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { CheckerMark, OrbitSphere } from "@/components/brand/motifs";
 import { renderMarkdown } from "@/lib/markdown";
 
 interface UiMessage {
@@ -85,14 +86,21 @@ export function Chat({ initial, conversationId: initialId }: { initial: UiMessag
     <div className="mx-auto flex h-[calc(100vh-52px)] max-w-3xl flex-col p-4 md:h-screen md:p-6">
       <div className="flex-1 space-y-4 overflow-y-auto pb-4">
         {messages.length === 0 && (
-          <div className="mt-16 text-center">
-            <h1 className="text-2xl font-bold">
-              <span className="text-accent">●</span> Fale com seu segundo cérebro
-            </h1>
-            <div className="mx-auto mt-6 grid max-w-xl gap-2 sm:grid-cols-2">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => send(s)} className="rounded-md border border-border bg-panel p-3 text-left text-sm hover:border-accent">
-                  {s}
+          <div className="mt-6 text-center md:mt-10">
+            <OrbitSphere className="mx-auto h-[200px] w-[200px] md:h-[260px] md:w-[260px]" />
+            <div className="kicker mt-2">04 — Jarvis</div>
+            <h1 className="display mt-3 text-2xl text-foreground md:text-3xl">Fale com seu cérebro</h1>
+            <p className="mx-auto mt-3 max-w-md text-sm text-muted">
+              Pergunte sobre o que você aprendeu. O Jarvis busca nas suas notas, cita as fontes e sugere o próximo passo.
+            </p>
+            <div className="mx-auto mt-8 grid max-w-2xl gap-px bg-border text-left sm:grid-cols-2">
+              {SUGGESTIONS.map((s, i) => (
+                <button key={s} onClick={() => send(s)} className="surface group flex min-h-[92px] flex-col justify-between p-4 text-left text-sm text-foreground transition hover:bg-panel-2">
+                  <span className="kicker flex w-full items-center justify-between">
+                    {String(i + 1).padStart(2, "0")}
+                    <CheckerMark className="text-foreground/40 transition group-hover:text-[var(--signal)]" />
+                  </span>
+                  <span className="mt-3 leading-snug">{s}</span>
                 </button>
               ))}
             </div>
@@ -100,12 +108,12 @@ export function Chat({ initial, conversationId: initialId }: { initial: UiMessag
         )}
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
-            <div className={m.role === "user" ? "max-w-[85%] rounded-lg bg-accent-2/30 px-3 py-2" : "w-full"}>
+            <div className={m.role === "user" ? "surface-raised max-w-[85%] rounded-sm px-4 py-2.5" : "w-full border-l border-border pl-4"}>
               {m.tools.length > 0 && (
                 <div className="mb-1 flex flex-wrap gap-1">
                   {m.tools.map((t, j) => (
-                    <span key={j} className="rounded-full bg-panel-2 px-2 py-0.5 text-xs text-muted">
-                      🔎 {TOOL_LABELS[t] ?? t}
+                    <span key={j} className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted">
+                      {TOOL_LABELS[t] ?? t}
                     </span>
                   ))}
                 </div>
@@ -115,7 +123,7 @@ export function Chat({ initial, conversationId: initialId }: { initial: UiMessag
               ) : (
                 <p className="whitespace-pre-wrap text-sm">{m.text}</p>
               )}
-              {m.error && <p className="mt-1 text-xs text-red-400">{m.error}</p>}
+              {m.error && <p className="mt-1 text-xs text-[var(--signal)]">{m.error}</p>}
             </div>
           </div>
         ))}
@@ -139,9 +147,9 @@ export function Chat({ initial, conversationId: initialId }: { initial: UiMessag
           }}
           rows={2}
           placeholder="Pergunte ao Jarvis… (Enter envia, Shift+Enter quebra linha)"
-          className="flex-1 resize-none rounded-md border border-border bg-panel p-2 text-sm outline-none focus:border-accent"
+          className="field flex-1 resize-none text-sm "
         />
-        <button disabled={busy} className="rounded-md bg-accent-2 px-4 text-sm text-white hover:bg-accent disabled:opacity-50">
+        <button disabled={busy} className="btn-primary px-4 disabled:opacity-50">
           {busy ? "…" : "Enviar"}
         </button>
       </form>
