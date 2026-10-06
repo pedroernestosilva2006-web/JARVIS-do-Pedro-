@@ -20,7 +20,8 @@
 3. **Login por e-mail e senha**: em Authentication → Sign In / Providers → Email, deixe "Confirm email" ligado
    (recomendado) e defina o mínimo de senha em 8. O SMTP padrão do Supabase envia poucos e-mails por hora;
    para uso real, configure um SMTP próprio (Resend, SES…) em Authentication → Emails.
-4. **Auth → URL Configuration**: Site URL `https://<app>.vercel.app` e Redirect URL `https://<app>.vercel.app/auth/callback`.
+4. **Auth → URL Configuration**: Site URL `https://<app>.vercel.app` e Redirect URL `https://<app>.vercel.app/**`
+   (o link de "Esqueci minha senha" volta em `/auth/callback?next=/settings`; sem o curinga o Supabase cai na Site URL).
 5. **Vault** (depois que souber a URL da Vercel), no SQL Editor:
    ```sql
    select vault.create_secret('https://<app>.vercel.app', 'jarvis_app_url');

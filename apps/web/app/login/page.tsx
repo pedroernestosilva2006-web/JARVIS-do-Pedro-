@@ -74,10 +74,15 @@ export default function LoginPage() {
     const invalid = validateCredentials(email, "x", false);
     if (invalid) return setError("Informe seu e-mail acima para receber o link de recuperação.");
     setBusy(true);
-    await createClient().auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
-    });
-    setBusy(false);
+    try {
+      await createClient().auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+      });
+    } catch {
+      // Falha de rede: mesma resposta neutra abaixo
+    } finally {
+      setBusy(false);
+    }
     // Mesma resposta exista ou não a conta (não revela cadastros)
     setInfo("Se houver uma conta com esse e-mail, enviamos um link para redefinir a senha.");
   }
