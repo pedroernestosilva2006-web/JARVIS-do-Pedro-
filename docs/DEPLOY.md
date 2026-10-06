@@ -17,8 +17,11 @@
    grant execute on function public.merge_notes(uuid, uuid, uuid) to authenticated, service_role;
    ```
 2. **Secret key**: Project Settings → API Keys → copie a `sb_secret_…` para a Vercel (`SUPABASE_SECRET_KEY`).
-3. **Auth → URL Configuration**: Site URL `https://<app>.vercel.app` e Redirect URL `https://<app>.vercel.app/auth/callback`.
-4. **Vault** (depois que souber a URL da Vercel), no SQL Editor:
+3. **Login por e-mail e senha**: em Authentication → Sign In / Providers → Email, deixe "Confirm email" ligado
+   (recomendado) e defina o mínimo de senha em 8. O SMTP padrão do Supabase envia poucos e-mails por hora;
+   para uso real, configure um SMTP próprio (Resend, SES…) em Authentication → Emails.
+4. **Auth → URL Configuration**: Site URL `https://<app>.vercel.app` e Redirect URL `https://<app>.vercel.app/auth/callback`.
+5. **Vault** (depois que souber a URL da Vercel), no SQL Editor:
    ```sql
    select vault.create_secret('https://<app>.vercel.app', 'jarvis_app_url');
    select vault.create_secret('<o mesmo CRON_SECRET da Vercel>', 'jarvis_cron_secret');

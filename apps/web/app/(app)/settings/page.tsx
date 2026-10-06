@@ -1,3 +1,4 @@
+import { ChangePassword } from "@/components/settings/ChangePassword";
 import { McpTokenCreator, TelegramPairing } from "@/components/settings/SecretsPanel";
 import { Button, Card, timeAgo } from "@/components/ui";
 import { daysAgoIso } from "@/lib/dates";
@@ -44,6 +45,10 @@ export default async function SettingsPage() {
           />
           <Button variant="primary">Salvar perfil</Button>
         </form>
+      </Card>
+
+      <Card title="Senha de acesso">
+        <ChangePassword />
       </Card>
 
       <Card title="Telegram">
