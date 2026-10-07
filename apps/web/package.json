@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "eval:ingest": "tsx --conditions=react-server --tsconfig tsconfig.json evals/run-ingest-eval.ts",
-    "test:e2e": "node test/e2e/run.mjs"
+    "test:e2e": "node test/e2e/run.mjs && node test/e2e/open-access.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -44,5 +44,8 @@
     "typescript": "^5",
     "vitest": "^5.0.3"
   },
-  "packageManager": "pnpm@10.28.0"
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20.9"
+  }
 }

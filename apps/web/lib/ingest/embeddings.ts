@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SEMANTIC_THRESHOLDS, aiLinkStatus, semanticLinkStatus, type LinkStatus } from "@jarvis/core";
 import { embed, noteEmbeddingText, toPgVector } from "@/lib/ai/embed";
+import { embeddingsConfigured } from "@/lib/ai/provider";
 import { judgeLink } from "@/lib/ai/extract";
 import { recordUsage } from "@/lib/ai/llm";
 import { env } from "@/lib/env";
@@ -16,6 +17,9 @@ export async function processEmbeddings(
   jobs: { workspaceId: string; noteId: string }[],
 ): Promise<{ embedded: number; suggested: number }> {
   if (!jobs.length) return { embedded: 0, suggested: 0 };
+  // Embeddings são opcionais: sem OPENAI_API_KEY o app segue com busca por palavra-chave
+  // (o worker confirma o job e o preenchimento acontece quando a chave for configurada).
+  if (!embeddingsConfigured(process.env)) return { embedded: 0, suggested: 0 };
   const { data: notes, error } = await db
     .from("notes")
     .select("id, workspace_id, type, title, summary, content_md, embedding, created_at, created_by")
@@ -96,4 +100,21 @@ async function suggestLinks(
     count++;
   }
   return count;
+}
+
+/**
+ * Preenche embeddings que ficaram faltando (ex.: a OPENAI_API_KEY foi configurada depois).
+ * Chamado pelo worker a cada minuto; processa poucas notas por vez.
+ */
+export async function backfillEmbeddings(db: SupabaseClient, limit = 20): Promise<number> {
+  if (!embeddingsConfigured(process.env)) return 0;
+  const { data } = await db
+    .from("notes")
+    .select("id, workspace_id")
+    .is("embedding", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (!data?.length) return 0;
+  const r = await processEmbeddings(db, data.map((n) => ({ noteId: n.id, workspaceId: n.workspace_id })));
+  return r.embedded;
 }

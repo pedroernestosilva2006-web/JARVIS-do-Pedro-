@@ -10,7 +10,7 @@ import { disconnectChannelAction, revokeApiTokenAction, saveProfileAction } from
 export const metadata = { title: "Configurações — JARVIS" };
 
 export default async function SettingsPage() {
-  const { supabase, workspaceId } = await requireWorkspace();
+  const { supabase, workspaceId, internal } = await requireWorkspace();
   const since = daysAgoIso(30);
   const [{ data: ws }, { data: identities }, { data: tokens }, { data: usage }] = await Promise.all([
     supabase.from("workspaces").select("name, profile_md").eq("id", workspaceId).single(),
@@ -53,9 +53,18 @@ export default async function SettingsPage() {
         </form>
       </Card>
 
-      <Card title="Senha de acesso">
-        <ChangePassword />
-      </Card>
+      {internal ? (
+        <Card title="Acesso">
+          <p className="text-sm text-muted">
+            O login está desligado (uso interno): o app entra direto como o dono. Para exigir e-mail e senha, defina
+            <code className="mx-1 rounded bg-panel-2 px-1">JARVIS_REQUIRE_LOGIN=1</code> nas variáveis de ambiente.
+          </p>
+        </Card>
+      ) : (
+        <Card title="Senha de acesso">
+          <ChangePassword />
+        </Card>
+      )}
 
       <Card title="Telegram">
         <ul className="mb-3 space-y-1 text-sm">

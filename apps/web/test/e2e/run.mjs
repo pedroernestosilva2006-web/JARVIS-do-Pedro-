@@ -92,6 +92,7 @@ async function main() {
       TELEGRAM_WEBHOOK_SECRET: WEBHOOK_SECRET,
       TELEGRAM_API_BASE: MOCK,
       CRON_SECRET,
+      JARVIS_REQUIRE_LOGIN: "1", // este e2e cobre o modo com login; o modo interno está em open-access.mjs
       ANTHROPIC_API_KEY: "sk-ant-e2e",
       ANTHROPIC_BASE_URL: MOCK,
       OPENAI_API_KEY: "sk-e2e",
@@ -205,13 +206,13 @@ async function main() {
     const long = Array.from({ length: 110 }, (_, i) => `Seção ${i}. ${paragraph}`).join("\n\n");
     await telegram(tgMessage(long));
     await waitFor(() => telegramSent.slice(before).find((m) => /Registrei/.test(m.text)), { timeout: 30_000 });
-    // (filtrar por raw_text com 12 mil caracteres estoura a URL do PostgREST: pega a fonte mais recente)
+    // (filtrar por raw_text inteiro estoura a URL do PostgREST, e captured_at tem resolução de 1 s no Telegram:
+    // usamos só o começo do texto, que é único)
     const { data: src } = await admin
       .from("sources")
       .select("id, raw_text")
       .eq("workspace_id", workspaceId)
-      .order("captured_at", { ascending: false })
-      .limit(1)
+      .like("raw_text", "Seção 0.%")
       .single();
     assert.equal(src.raw_text, long);
     const { data: chunks } = await admin.from("chunks").select("ordinal, embedding").eq("source_id", src.id).order("ordinal");

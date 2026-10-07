@@ -1,3 +1,5 @@
+import { defaultModels, resolveAiProvider } from "@/lib/ai/provider";
+
 /** Leitura centralizada de variáveis de ambiente, com erro claro quando faltam. */
 
 function required(name: string, ...fallbacks: string[]): string {
@@ -22,8 +24,8 @@ export const env = {
   cronSecret: () => required("CRON_SECRET"),
   appUrl: () => process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   /** Modelos configuráveis — preços e modelos mudam; nunca fixe no código. */
-  extractModel: () => process.env.JARVIS_EXTRACT_MODEL ?? "claude-haiku-4-5",
-  chatModel: () => process.env.JARVIS_CHAT_MODEL ?? "claude-sonnet-5-5",
+  extractModel: () => process.env.JARVIS_EXTRACT_MODEL ?? defaultModels(resolveAiProvider(process.env).kind).extract,
+  chatModel: () => process.env.JARVIS_CHAT_MODEL ?? defaultModels(resolveAiProvider(process.env).kind).chat,
   embedModel: () => process.env.JARVIS_EMBED_MODEL ?? "text-embedding-3-small",
   /** gpt-4o-mini-transcribe sai do ar em 26/02/2027 — troque por gpt-transcribe quando disponível. */
   transcribeModel: () => process.env.JARVIS_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe",

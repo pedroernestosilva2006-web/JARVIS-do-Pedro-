@@ -1,7 +1,9 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import type { BetaMessageStream } from "@anthropic-ai/sdk/lib/BetaMessageStream";
 import { env } from "@/lib/env";
-import { anthropic, recordUsage } from "@/lib/ai/llm";
+import { aiProvider, anthropic, recordUsage } from "@/lib/ai/llm";
+import { supportsAnthropicExtras } from "@/lib/ai/provider";
 import { JARVIS_SYSTEM, profileBlock } from "@/lib/ai/prompts/chat";
 import { anthropicTools, runTool, type ToolContext } from "./tools";
 
@@ -14,9 +16,9 @@ export type JarvisEvent =
 
 const MAX_TURNS = 8;
 
-/** Modelos que aceitam o fallback server-side ("default") na Claude API. */
+/** Fallback server-side e effort existem só na API direta da Anthropic (não no AI Gateway). */
 function supportsDefaultFallback(model: string) {
-  return /^claude-(sonnet-5-5|opus-5|fable-5)/.test(model);
+  return supportsAnthropicExtras(aiProvider().kind, model);
 }
 
 async function buildSystem(ctx: ToolContext): Promise<Anthropic.Beta.Messages.BetaTextBlockParam[]> {
@@ -60,17 +62,26 @@ export async function runJarvis(
   let finalText = "";
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const stream = anthropic().beta.messages.stream({
-      model,
-      max_tokens: 16000,
-      system,
-      tools,
-      messages,
-      output_config: { effort: (process.env.JARVIS_CHAT_EFFORT as "low" | "medium" | "high") ?? "medium" },
-      ...(supportsDefaultFallback(model)
-        ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
-        : {}),
-    });
+    // API direta: endpoint beta (fallbacks server-side + effort). Gateway/outros: API de mensagens padrão.
+    const extras = supportsDefaultFallback(model);
+    const stream: BetaMessageStream = extras
+      ? anthropic().beta.messages.stream({
+          model,
+          max_tokens: 16000,
+          system,
+          tools,
+          messages,
+          output_config: { effort: (process.env.JARVIS_CHAT_EFFORT as "low" | "medium" | "high") ?? "medium" },
+          betas: ["server-side-fallback-2026-07-01"],
+          fallbacks: "default" as const,
+        })
+      : (anthropic().messages.stream({
+          model,
+          max_tokens: 16000,
+          system: system as Anthropic.TextBlockParam[],
+          tools,
+          messages: messages as Anthropic.MessageParam[],
+        }) as unknown as BetaMessageStream);
     stream.on("text", (delta) => onEvent({ type: "text", text: delta }));
     const message = await stream.finalMessage();
     await recordUsage(ctx.workspaceId, "chat", message.model ?? model, message.usage);

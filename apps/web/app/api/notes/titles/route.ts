@@ -1,14 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAppContext } from "@/lib/access";
 
 /** Títulos para o autocomplete de [[wikilinks]] (cliente do usuário → RLS). */
 export async function GET(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return new Response("unauthorized", { status: 401 });
-  const { data: workspaceId } = await supabase.rpc("bootstrap_workspace", {});
-  if (!workspaceId) return new Response("workspace", { status: 500 });
+  const ctx = await getAppContext();
+  if (!ctx) return new Response("unauthorized", { status: 401 });
+  const { db: supabase, workspaceId } = ctx;
   const q = (new URL(req.url).searchParams.get("q") ?? "").trim().replace(/[%_\\]/g, "").slice(0, 100);
   let query = supabase
     .from("notes")

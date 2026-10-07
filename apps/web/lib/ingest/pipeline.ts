@@ -15,6 +15,7 @@ import {
   type PlannedNote,
 } from "@jarvis/core";
 import { embed, toPgVector } from "@/lib/ai/embed";
+import { embeddingsConfigured } from "@/lib/ai/provider";
 import { extractKnowledge } from "@/lib/ai/extract";
 import { recordUsage } from "@/lib/ai/llm";
 import { env } from "@/lib/env";
@@ -128,10 +129,12 @@ async function storeChunks(db: SupabaseClient, workspaceId: string, sourceId: st
   if (count) return;
   const pieces = chunkText(text);
   const embeddings: (string | null)[] = [];
-  for (let i = 0; i < pieces.length; i += 64) {
-    const { vectors, tokens } = await embed(pieces.slice(i, i + 64));
-    embeddings.push(...vectors.map(toPgVector));
-    await recordUsage(workspaceId, "embed", env.embedModel(), { input_tokens: tokens }, "openai");
+  if (embeddingsConfigured(process.env)) {
+    for (let i = 0; i < pieces.length; i += 64) {
+      const { vectors, tokens } = await embed(pieces.slice(i, i + 64));
+      embeddings.push(...vectors.map(toPgVector));
+      await recordUsage(workspaceId, "embed", env.embedModel(), { input_tokens: tokens }, "openai");
+    }
   }
   const { error } = await db.from("chunks").insert(
     pieces.map((content, ordinal) => ({
@@ -139,7 +142,7 @@ async function storeChunks(db: SupabaseClient, workspaceId: string, sourceId: st
       source_id: sourceId,
       ordinal,
       content,
-      embedding: embeddings[ordinal],
+      embedding: embeddings[ordinal] ?? null,
     })),
   );
   if (error) throw new Error(`chunks: ${error.message}`);

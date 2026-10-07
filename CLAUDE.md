@@ -16,7 +16,7 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 - `pnpm dev` · `pnpm test` (core + web) · `pnpm lint` · `pnpm typecheck` · `pnpm build`
 - `supabase start` · `supabase db reset` (migrations + seed) · `supabase migration new <nome>`
 - `psql "$DB_URL" -f supabase/tests/rls_and_functions.sql` — isolamento/RLS/funções
-- `pnpm --filter web test:e2e` — e2e contra Supabase local com mocks de Telegram/Anthropic/OpenAI
+- `pnpm --filter web test:e2e` — dois e2e contra Supabase local com mocks (com login; e modo interno + AI Gateway sem OpenAI)
 - `pnpm eval:ingest` — golden set de extração (gasta tokens reais; precisa ANTHROPIC_API_KEY)
 
 ## Regras invioláveis
@@ -26,12 +26,17 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 - Notas da IA nascem `stage='semente'`, `created_by='ai'`. Links da IA com confiança < 0.8 nascem `suggested`.
 - FTS sempre `'portuguese'`. Embeddings `text-embedding-3-small` 1536d (casa com `vector(1536)`).
 - Prompts em `apps/web/lib/ai/prompts/*.ts`, com versão. Mudou prompt → rode `pnpm eval:ingest`.
+- IA: `lib/ai/provider.ts` escolhe Anthropic direta ou Vercel AI Gateway; embeddings são opcionais (`embeddingsConfigured`). Fallback server-side/effort só na API direta.
 - Provedores atrás de interfaces: `lib/ai/llm.ts`, `embed.ts`, `transcribe.ts`. Modelos por env, nunca fixos.
 - Todo uso de IA passa por `recordUsage` (tabela `ai_usage`) — base de billing por workspace.
 - Tools do Jarvis definidas uma vez em `lib/jarvis/tools.ts` (chat web, Telegram e MCP usam as mesmas).
 - Histórico do chat é append-only (não edite mensagens antigas: quebra cache e thinking preservado).
 - Funções SQL novas: `set search_path`, recebem `p_workspace`, e entram no `revoke/grant` de `…_grants.sql`.
 - Após cada migration: `supabase db reset`, testes SQL e advisors de segurança (MCP do Supabase).
+
+## Acesso
+- Uso interno: **sem login por padrão** (`lib/access.ts` → `getAppContext()`; `JARVIS_REQUIRE_LOGIN=1` volta a exigir). No modo interno o app usa o cliente de serviço, então TODA consulta precisa filtrar `workspace_id`.
+- Toda rota/página obtém usuário e workspace por `getAppContext()`/`requireWorkspace()`; nunca chame `auth.getUser()` direto.
 
 ## Convenções
 - Server actions em `app/(app)/actions.ts`; páginas usam `requireWorkspace()` (RLS + workspace).
@@ -47,6 +52,7 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 - Cores com alfa em arestas WebGL (Sigma) variam por GPU: use cores opacas pré-misturadas.
 - ForceAtlas2 sem `strongGravityMode` espalha componentes desconectados; e a câmera precisa de `animatedReset` após o layout.
 - Visual: tokens em `globals.css` (monocromático + `--signal` vermelho), classes `.display`, `.kicker`, `.surface`, `.btn-primary`, `.field`; motivos em `components/brand/motifs.tsx`.
+- `try/catch` ao redor de `cookies()`/APIs dinâmicas engole o sinal do Next e a página é pré-renderizada no build (quebra sem env e congela dados): chame `await connection()` antes do try. Valide com um build limpo sem env (`env -i … next build`).
 - Arquivos `"use server"` só podem exportar funções async.
 - `after()` deve ser chamado no corpo do handler; para esperar um stream, use uma promise resolvida no fim dele.
 - Filtrar PostgREST por texto muito longo (`.eq("raw_text", …)`) estoura a URL: filtre por id/data.

@@ -1,6 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { env } from "@/lib/env";
+import { resolveAiProvider, type AiProvider } from "./provider";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -9,8 +9,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 let client: Anthropic | null = null;
 
+export function aiProvider(): AiProvider {
+  return resolveAiProvider(process.env);
+}
+
 export function anthropic(): Anthropic {
-  client ??= new Anthropic({ apiKey: env.anthropicApiKey() });
+  if (client) return client;
+  const p = aiProvider();
+  if (p.kind === "none") {
+    throw new Error("IA não configurada: defina ANTHROPIC_API_KEY ou habilite o Vercel AI Gateway (AI_GATEWAY_API_KEY).");
+  }
+  client =
+    p.kind === "anthropic"
+      ? new Anthropic({ apiKey: p.apiKey, baseURL: p.baseURL })
+      : new Anthropic({ apiKey: null, authToken: p.authToken, baseURL: p.baseURL });
   return client;
 }
 

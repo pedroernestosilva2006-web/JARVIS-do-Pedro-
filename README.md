@@ -40,7 +40,7 @@ npx supabase db reset             # aplica migrations + seed
 cp .env.example apps/web/.env.local   # preencha com `npx supabase status` e suas chaves
 pnpm dev                          # http://localhost:3000
 ```
-O login é por e-mail e senha (ou link mágico). No Supabase local, os e-mails ficam no Mailpit (`supabase status` mostra a URL).
+O app abre direto, sem login (uso interno); com `JARVIS_REQUIRE_LOGIN=1` passa a exigir e-mail e senha (ou link mágico). No Supabase local, os e-mails ficam no Mailpit (`supabase status` mostra a URL).
 Para ver os dados do seed, associe seu usuário ao workspace de exemplo (instruções no topo de `supabase/seed.sql`).
 
 ## Testes
