@@ -14,11 +14,11 @@ import type { GraphSnapshot } from "@/lib/types";
 type ColorMode = "mono" | "type" | "community";
 
 // Cores opacas (pré-misturadas com o fundo #1e1e1e): alfa em arestas WebGL varia entre GPUs
-const EDGE_COLOR = "#2a2a2a";
+const EDGE_COLOR = "#3d3d3d";
 const EDGE_SUGGESTED = "#4a1d1b";
-const EDGE_HIGHLIGHT = "#bdbdbd";
+const EDGE_HIGHLIGHT = "#a8a8a8";
 const EDGE_SUGGESTED_HIGHLIGHT = "#e5322d";
-const DIM_NODE = "#262626";
+const DIM_NODE = "#303030";
 const SIGNAL = "#e5322d";
 
 /**
@@ -41,7 +41,9 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
 
   const [snapshot, setSnapshot] = useState<GraphSnapshot | null>(null);
   const [error, setError] = useState("");
-  const [colorMode, setColorMode] = useState<ColorMode>("mono");
+  const [colorMode, setColorMode] = useState<ColorMode>("type");
+  const [nodeScale, setNodeScale] = useState(1);
+  const [linkWidth, setLinkWidth] = useState(1);
   const [hiddenTypes, setHiddenTypes] = useState<Set<NoteType>>(new Set());
   const [hideOrphans, setHideOrphans] = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
@@ -57,6 +59,7 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
   // Filtros vivem em ref para os reducers do Sigma lerem sem recriar o renderer
   const filtersRef = useRef({ hiddenTypes, hideOrphans, showSuggested, timeCut });
   const colorModeRef = useRef<ColorMode>(colorMode);
+  const scaleRef = useRef({ node: 1, link: 1 });
 
   const loadSnapshot = useCallback(() => {
     fetch("/api/graph")
@@ -139,7 +142,7 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
         label: n.title,
         x: n.x ?? Math.random() * 100,
         y: n.y ?? Math.random() * 100,
-        size: nodeSize(n.degree, n.type),
+        size: nodeSize(n.degree, n.type) * 0.75,
         noteType: n.type,
         degree: n.degree,
         createdAt: new Date(n.created_at).getTime(),
@@ -180,7 +183,7 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
         nodeReducer: (node, data) => {
           const f = filtersRef.current;
           const s = stateRef.current;
-          const res: Record<string, unknown> = { ...data };
+          const res: Record<string, unknown> = { ...data, size: (data.size as number) * scaleRef.current.node };
           const mode = colorModeRef.current;
           res.color = mode === "community" ? (data.communityColor ?? data.typeColor) : mode === "type" ? data.typeColor : data.toneColor;
           if (
@@ -216,12 +219,13 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
             return res;
           }
           res.color = suggested ? EDGE_SUGGESTED : EDGE_COLOR;
+          res.size = scaleRef.current.link;
           const active = s.hovered ?? s.selected;
           if (active) {
             const [a, b] = g.extremities(edge);
             if (a === active || b === active) {
               res.color = suggested ? EDGE_SUGGESTED_HIGHLIGHT : EDGE_HIGHLIGHT;
-              res.size = 1.5;
+              res.size = scaleRef.current.link * 1.6;
             } else res.hidden = true;
           }
           return res;
@@ -236,6 +240,30 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
       renderer.on("leaveNode", () => {
         stateRef.current = { ...stateRef.current, hovered: null, neighbors: new Set() };
         renderer.refresh({ skipIndexation: true });
+      });
+      // Arrastar um ponto move o nó (como no Obsidian); a posição é salva ao soltar
+      let dragged: string | null = null;
+      let moved = false;
+      renderer.on("downNode", ({ node }) => {
+        dragged = node;
+        moved = false;
+        g.setNodeAttribute(node, "highlighted", true);
+      });
+      renderer.getMouseCaptor().on("mousemovebody", (e) => {
+        if (!dragged) return;
+        const pos = renderer.viewportToGraph(e);
+        g.setNodeAttribute(dragged, "x", pos.x);
+        g.setNodeAttribute(dragged, "y", pos.y);
+        moved = true;
+        e.preventSigmaDefault();
+        e.original.preventDefault();
+        e.original.stopPropagation();
+      });
+      renderer.getMouseCaptor().on("mouseup", () => {
+        if (dragged) g.removeNodeAttribute(dragged, "highlighted");
+        const wasMoved = moved;
+        dragged = null;
+        if (wasMoved) void savePositions();
       });
       renderer.on("clickNode", ({ node }) => selectNode(node, true));
       renderer.on("clickStage", () => selectNode(null));
@@ -260,15 +288,16 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
       sigmaRef.current?.kill();
       sigmaRef.current = null;
     };
-  }, [snapshot, focusId, runLayout, selectNode]);
+  }, [snapshot, focusId, runLayout, selectNode, savePositions]);
 
   // Re-render quando filtros mudam
   useEffect(() => {
     filtersRef.current = { hiddenTypes, hideOrphans, showSuggested, timeCut };
     colorModeRef.current = colorMode;
+    scaleRef.current = { node: nodeScale, link: linkWidth };
     sigmaRef.current?.setSetting("labelRenderedSizeThreshold", labelThreshold);
     sigmaRef.current?.refresh({ skipIndexation: true });
-  }, [hiddenTypes, hideOrphans, showSuggested, colorMode, labelThreshold, timeCut]);
+  }, [hiddenTypes, hideOrphans, showSuggested, colorMode, labelThreshold, timeCut, nodeScale, linkWidth]);
 
   // Animação: "ver o cérebro crescer" por ordem cronológica
   useEffect(() => {
@@ -307,7 +336,7 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
   }, [snapshot]);
 
   return (
-    <div className="relative h-[calc(100vh-52px)] w-full bg-[radial-gradient(ellipse_at_50%_40%,#141414_0%,#0a0a0a_70%)] md:h-screen">
+    <div className="relative h-[calc(100vh-52px)] w-full bg-[#1e1e1e] md:h-screen">
       <div ref={containerRef} className="absolute inset-0" />
 
       {error && <p className="absolute left-4 top-4 text-red-400">Erro ao carregar o grafo: {error}</p>}
@@ -378,6 +407,14 @@ export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiRe
         <label className="flex items-center gap-2 text-xs">
           <input type="checkbox" checked={showSuggested} onChange={(e) => setShowSuggested(e.target.checked)} />
           Sugestões da IA <span className="ml-auto inline-block h-px w-5 bg-[var(--signal)]" />
+        </label>
+        <label className="block text-xs text-muted">
+          Tamanho dos pontos
+          <input type="range" min={0.5} max={2.5} step={0.1} value={nodeScale} onChange={(e) => setNodeScale(Number(e.target.value))} className="w-full" />
+        </label>
+        <label className="block text-xs text-muted">
+          Espessura das linhas
+          <input type="range" min={0.5} max={4} step={0.25} value={linkWidth} onChange={(e) => setLinkWidth(Number(e.target.value))} className="w-full" />
         </label>
         <label className="block text-xs text-muted">
           Rótulos (fade por zoom)
