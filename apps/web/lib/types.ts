@@ -57,6 +57,7 @@ export interface GraphSnapshot {
     x: number | null;
     y: number | null;
     created_at: string;
+    tags?: string[];
   }[];
   edges: {
     id: string;

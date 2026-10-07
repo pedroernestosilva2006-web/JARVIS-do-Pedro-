@@ -8,6 +8,9 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 ## Estrutura
 - `apps/web` — Next.js 16 (App Router, `proxy.ts` no lugar de middleware). Leia `apps/web/AGENTS.md`:
   esta versão do Next tem breaking changes; a doc local fica em `node_modules/next/dist/docs/`.
+  Direção de produto: **o grafo é o produto; o resto é camada por cima.** Home = Cérebro (`/graph`, tela cheia);
+  rail de ícones (celular: abas inferiores); barra de comando Ctrl/Cmd+K (capturar · buscar · pular · perguntar);
+  gaveta "Revisar (N)" no lugar da Inbox; dock do Jarvis (tecla J); listas (Notas/Timeline/Arquivos) = lista + leitura.
 - `packages/core` — lógica pura e testável: taxonomia, schemas Zod da extração, plano de ingestão,
   entity resolution, wikilinks, limiares de link. Sem I/O.
 - `supabase/migrations` — schema, RLS, busca híbrida, grafo, filas, lint. `supabase/tests` — testes SQL.
@@ -37,7 +40,10 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 ## Arquivos
 - Upload SEMPRE direto ao Storage por URL assinada (`/api/files/sign` → `uploadToSignedUrl` → `/api/files/commit`); a Vercel limita o corpo a ~4,5 MB. Catálogo na tabela `attachments` (`workspace_id` + RLS); caminho `${workspace}/files/${uuid}-${nome-seguro}`.
 - Regras puras em `lib/files/rules.ts` (limite 50 MB, nome seguro, o que o Jarvis consegue analisar).
-- Painel do ponto do grafo: `components/graph/NoteDrawer.tsx` ← `/api/notes/[id]`. Eventos `jarvis:changed` / `jarvis:add` conectam modal, grafo e painel.
+- Painel da nota: `components/note/NotePanel.tsx` ← `/api/notes/[id]` (usado no Cérebro como painel lateral direito e nas listas como coluna de leitura). Eventos (`lib/ui-events.ts`): `jarvis:changed|palette|dock|review|focus|local|toast`.
+- Grafo: `components/graph/GraphView.tsx` (Sigma + Graphology; layout d3-force em `lib/graph/layout.ts` com as 4 forças do Obsidian) e painel `GraphSettingsPanel` (Filtros · Grupos · Exibição · Forças, guardado em localStorage). Consultas de grupo/filtro e grafo local são puras em `packages/core/src/graph.ts`.
+- Dados de exemplo (~40 notas, `properties.demo`): `lib/demo/data.ts` + `loadDemoDataAction`/`clearDemoDataAction`.
+- Status de integrações (semáforo em Ajustes): `lib/integrations.ts` — só nomes de variáveis, nunca valores.
 
 ## Acesso
 - Uso interno: **sem login por padrão** (`lib/access.ts` → `getAppContext()`; `JARVIS_REQUIRE_LOGIN=1` volta a exigir). No modo interno o app usa o cliente de serviço, então TODA consulta precisa filtrar `workspace_id`.
@@ -56,7 +62,13 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 - MCP do Supabase: `apply_migration` com `drop`/`delete` pede confirmação e expira em 60 s; evite `drop` em migrations.
 - Cores com alfa em arestas WebGL (Sigma) variam por GPU: use cores opacas pré-misturadas.
 - ForceAtlas2 sem `strongGravityMode` espalha componentes desconectados; e a câmera precisa de `animatedReset` após o layout.
-- Visual: tokens em `globals.css` (monocromático + `--signal` vermelho), classes `.display`, `.kicker`, `.surface`, `.btn-primary`, `.field`; motivos em `components/brand/motifs.tsx`.
+- Visual: tokens em `globals.css` (Obsidian escuro `#1e1e1e` + UM acento roxo `#8b6cef`; texto sobre o acento é ESCURO — branco não passa AA), classes `.surface`, `.btn-primary/-outline/-ghost`, `.field`, `.chip`, `.kbd`, `.skeleton`. Sentence case, sem caixa alta. O roxo é reservado à interface (seleção, foco, sugestões da IA): não use roxo nas cores de tipo (`TYPE_COLORS`).
+- CSS não-camadado vence utilitários do Tailwind (`outline-none` perdia para `:focus-visible` global): regras globais vão em `@layer base`.
+- Sigma/WebGL só pode ser importado no navegador: `import("sigma")` e `import("sigma/rendering")` dentro de efeito (import estático quebra o SSR com `WebGL2RenderingContext is not defined`).
+- `redirect()` em página com `loading.tsx` já saiu com 200 (shell em streaming): redirecionamentos de endereços antigos ficam em `next.config.ts` (`redirects()`), onde são 307 de verdade.
+- `resolveOwner()` (modo interno) precisa compartilhar a busca em andamento: layout + página + APIs na primeira abertura criavam um workspace cada.
+- Servidor de e2e órfão (`next start` na porta 3100/3101) faz o próximo e2e falar com o app errado: `fuser -k 3100/tcp 3101/tcp` antes.
+- Overlays fixos dentro de elementos com `backdrop-filter`/`transform` ficam presos ao elemento: use `createPortal(document.body)`.
 - `try/catch` ao redor de `cookies()`/APIs dinâmicas engole o sinal do Next e a página é pré-renderizada no build (quebra sem env e congela dados): chame `await connection()` antes do try. Valide com um build limpo sem env (`env -i … next build`).
 - Arquivos `"use server"` só podem exportar funções async.
 - `after()` deve ser chamado no corpo do handler; para esperar um stream, use uma promise resolvida no fim dele.

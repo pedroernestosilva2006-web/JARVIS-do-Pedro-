@@ -70,3 +70,8 @@ Observação: o plano Hobby da Vercel é só para uso pessoal e não comercial. 
 
 ## Arquivos (migration 0008)
 Aplique `supabase/migrations/20261007000008_attachments.sql` no Supabase hospedado (tabela `attachments` + limite de 50 MB no bucket `captures`). Depois confira em Ajustes → Conexões e use “Testar Claude” para validar a `ANTHROPIC_API_KEY`.
+
+
+## Variáveis que o semáforo de Ajustes cobra
+Ajustes → Conexões mostra, para Claude, OpenAI, Telegram, Supabase e Cron, exatamente qual variável falta (nunca o valor):
+`ANTHROPIC_API_KEY` (ou `AI_GATEWAY_API_KEY`), `CRON_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`; opcionais: `OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`.

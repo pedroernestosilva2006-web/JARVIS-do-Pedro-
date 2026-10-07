@@ -64,8 +64,3 @@ export async function uploadFile(
     return { ok: false, error: err instanceof Error ? err.message : "Falha de rede." };
   }
 }
-
-/** Avisa o resto da tela (grafo, listas) que algo mudou. */
-export function notifyChanged() {
-  window.dispatchEvent(new Event("jarvis:changed"));
-}

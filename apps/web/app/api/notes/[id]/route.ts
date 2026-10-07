@@ -16,20 +16,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .maybeSingle();
   if (!note) return new Response("not found", { status: 404 });
 
-  const [{ data: outgoing }, { data: incoming }, { data: sources }] = await Promise.all([
+  const [{ data: outgoing }, { data: incoming }, { data: sources }, { data: tagRows }] = await Promise.all([
     db
       .from("links")
-      .select("id, relation, status, rationale, other:notes!links_to_note_fkey(id, title, type)")
+      .select("id, relation, status, rationale, confidence, other:notes!links_to_note_fkey(id, title, type)")
       .eq("workspace_id", workspaceId)
       .eq("from_note", id)
       .neq("status", "rejected"),
     db
       .from("links")
-      .select("id, relation, status, rationale, other:notes!links_from_note_fkey(id, title, type)")
+      .select("id, relation, status, rationale, confidence, other:notes!links_from_note_fkey(id, title, type)")
       .eq("workspace_id", workspaceId)
       .eq("to_note", id)
       .neq("status", "rejected"),
     db.from("note_sources").select("source_id, excerpt").eq("workspace_id", workspaceId).eq("note_id", id),
+    db.from("note_tags").select("tag:tags(name)").eq("workspace_id", workspaceId).eq("note_id", id),
   ]);
 
   // Arquivos da nota: anexados direto a ela, ou os que originaram as fontes dela
@@ -49,6 +50,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       ...(incoming ?? []).map((l) => ({ ...l, direction: "in" as const })),
     ],
     files: files ?? [],
+    tags: (tagRows ?? []).map((t) => (t.tag as unknown as { name: string } | null)?.name).filter(Boolean),
     excerpts: (sources ?? []).map((s) => s.excerpt).filter(Boolean),
   });
 }

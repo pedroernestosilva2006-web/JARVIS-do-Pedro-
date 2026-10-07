@@ -69,16 +69,18 @@ const app = spawn(path.join(webDir, "node_modules/.bin/next"), ["start", "-p", "
   },
   stdio: "ignore",
 });
-await waitFor(() => fetch(`${APP}/inbox`).then((r) => r.ok).catch(() => false), 60_000);
+await waitFor(() => fetch(`${APP}/graph`).then((r) => r.ok).catch(() => false), 60_000);
 
 await step("sem sessão: páginas abrem como o dono (sem redirecionar ao login)", async () => {
-  for (const p of ["/inbox", "/notes", "/graph", "/files", "/chat", "/timeline", "/settings"]) {
+  for (const p of ["/graph", "/notes", "/files", "/chat", "/timeline", "/settings"]) {
     const r = await fetch(`${APP}${p}`, { redirect: "manual" });
     assert.equal(r.status, 200, `${p} → ${r.status}`);
   }
-  const html = await (await fetch(`${APP}/inbox`)).text();
-  assert.match(html, /Acesso interno/);
-  assert.equal((await fetch(`${APP}/inbox`)).headers.get("x-robots-tag"), "noindex, nofollow");
+  const html = await (await fetch(`${APP}/settings`)).text();
+  assert.match(html, /O login está desligado/);
+  assert.match(html, /Falta definir na Vercel/, "semáforo diz qual variável falta (OpenAI não está definida neste teste)");
+  assert.doesNotMatch(html, /gw-e2e/, "valores de variáveis nunca aparecem");
+  assert.equal((await fetch(`${APP}/graph`)).headers.get("x-robots-tag"), "noindex, nofollow");
 });
 
 await step("/login redireciona para o app", async () => {
@@ -89,7 +91,7 @@ await step("/login redireciona para o app", async () => {
 
 let workspaceId;
 await step("o workspace é o do dono (criado se não existia)", async () => {
-  await fetch(`${APP}/inbox`);
+  await fetch(`${APP}/graph`);
   const { data } = await admin.from("workspace_members").select("workspace_id").eq("user_id", ownerId);
   assert.equal(data.length, 1);
   workspaceId = data[0].workspace_id;

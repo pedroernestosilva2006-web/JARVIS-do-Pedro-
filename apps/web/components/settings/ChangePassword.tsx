@@ -29,10 +29,10 @@ export function ChangePassword() {
     <form onSubmit={submit} className="space-y-2" noValidate>
       <input type="password" autoComplete="new-password" placeholder="Nova senha" value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
       <input type="password" autoComplete="new-password" placeholder="Repita a nova senha" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={field} />
-      <button disabled={busy} className="btn-primary px-3 py-1.5 disabled:opacity-50">
+      <button disabled={busy} className="btn-primary">
         {busy ? "Salvando…" : "Salvar senha"}
       </button>
-      {msg && <p className={`text-sm ${msg.ok ? "text-green-400" : "text-red-400"}`}>{msg.text}</p>}
+      {msg && <p className={`text-sm ${msg.ok ? "text-ok" : "text-danger"}`}>{msg.text}</p>}
     </form>
   );
 }

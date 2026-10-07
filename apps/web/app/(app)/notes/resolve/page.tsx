@@ -9,5 +9,5 @@ export default async function ResolvePage({ searchParams }: { searchParams: Prom
   const { supabase, workspaceId } = await requireWorkspace();
   const found = await findNoteByTitle(supabase, workspaceId, title);
   const id = found?.id ?? (await createNote(supabase, workspaceId, { type: "conceito", title })).id;
-  redirect(`/notes/${id}`);
+  redirect(`/notes?sel=${id}`);
 }

@@ -15,7 +15,28 @@ export async function GET(req: Request) {
     p_include_suggested: url.searchParams.get("suggested") !== "0",
   });
   if (error) return new Response(error.message, { status: 500 });
-  return Response.json(data);
+
+  // Tags por nota (para filtros e grupos). O PostgREST devolve no máximo 1000 linhas por página.
+  const tagsByNote = new Map<string, string[]>();
+  for (let page = 0; page < 30; page++) {
+    const { data: rows, error: tagErr } = await ctx.supabase
+      .from("note_tags")
+      .select("note_id, tag:tags(name)")
+      .eq("workspace_id", ctx.workspaceId)
+      .order("note_id")
+      .range(page * 1000, page * 1000 + 999);
+    if (tagErr) {
+      console.error("graph: tags indisponíveis", tagErr.message); // o grafo segue sem tags
+      break;
+    }
+    for (const r of rows ?? []) {
+      const name = (r.tag as unknown as { name: string } | null)?.name;
+      if (name) tagsByNote.set(r.note_id, [...(tagsByNote.get(r.note_id) ?? []), name]);
+    }
+    if ((rows?.length ?? 0) < 1000) break;
+  }
+  const snapshot = data as { nodes: { id: string }[]; edges: unknown[] };
+  return Response.json({ ...snapshot, nodes: snapshot.nodes.map((n) => ({ ...n, tags: tagsByNote.get(n.id) ?? [] })) });
 }
 
 const Positions = z.array(z.object({ id: z.string().uuid(), x: z.number(), y: z.number() })).max(50_000);

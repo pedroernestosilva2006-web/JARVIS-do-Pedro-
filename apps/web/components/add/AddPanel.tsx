@@ -1,15 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckerMark } from "@/components/brand/motifs";
 import { analyzableKind, formatBytes } from "@/lib/files/rules";
-import { notifyChanged, uploadFile } from "@/lib/files/upload-client";
+import { uploadFile } from "@/lib/files/upload-client";
+import { notifyChanged } from "@/lib/ui-events";
 
 type Item = { id: string; file: File; status: "espera" | "enviando" | "ok" | "erro"; stage?: string; message?: string };
 
 /**
- * Painel único para guardar conhecimento: escreva, cole um link e/ou solte arquivos (vários, qualquer tipo).
+ * Guardar conhecimento: escreva, cole um link e/ou solte arquivos (vários, qualquer tipo).
  * Tudo é guardado; se marcado, o Jarvis lê PDFs, imagens, áudios e textos e cria as notas.
  */
 export function AddPanel({
@@ -17,16 +17,22 @@ export function AddPanel({
   aiReady,
   onDone,
   compact,
+  initialFiles,
+  autoFocus,
 }: {
   noteId?: string | null;
   aiReady: boolean;
   onDone?: () => void;
   compact?: boolean;
+  initialFiles?: File[];
+  autoFocus?: boolean;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<Item[]>(() =>
+    (initialFiles ?? []).map((file) => ({ id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2, 7)}`, file, status: "espera" as const })),
+  );
   const [analyze, setAnalyze] = useState(true);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
@@ -38,6 +44,10 @@ export function AddPanel({
   };
   const patch = (id: string, p: Partial<Item>) => setItems((cur) => cur.map((i) => (i.id === id ? { ...i, ...p } : i)));
   const canAnalyzeAny = items.some((i) => analyzableKind(i.file.name, i.file.type));
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (autoFocus) taRef.current?.focus();
+  }, [autoFocus]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,11 +99,16 @@ export function AddPanel({
   return (
     <form onSubmit={submit} className="space-y-3">
       <textarea
+        ref={taRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(e);
+        }}
         rows={compact ? 3 : 4}
         placeholder="Escreva uma ideia, cole um link ou um trecho do que aprendeu…"
-        className="field text-sm"
+        aria-label="Texto para guardar"
+        className="field text-[0.95rem]"
       />
 
       <div
@@ -104,20 +119,21 @@ export function AddPanel({
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           setDrag(false);
           if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && inputRef.current?.click()}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-1 border border-dashed px-4 py-6 text-center text-sm transition ${
-          drag ? "border-foreground bg-panel-2 text-foreground" : "border-border-strong text-muted hover:border-foreground hover:text-foreground"
+        aria-label="Escolher arquivos"
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), inputRef.current?.click())}
+        className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed px-4 py-5 text-center text-sm ${
+          drag ? "border-accent bg-accent-soft text-foreground" : "border-border-strong text-muted hover:border-accent hover:text-foreground"
         }`}
       >
-        <CheckerMark className="text-foreground/60" />
         <span>Arraste arquivos aqui ou clique para escolher</span>
-        <span className="text-[11px]">PDF, imagem, áudio, texto, planilha, qualquer tipo · até 50 MB cada</span>
+        <span className="text-xs">PDF, imagem, áudio, texto, planilha — qualquer tipo, até 50 MB cada</span>
         <input
           ref={inputRef}
           type="file"
@@ -131,16 +147,14 @@ export function AddPanel({
       </div>
 
       {items.length > 0 && (
-        <ul className="divide-y divide-border border border-border text-sm">
+        <ul className="divide-y divide-border rounded-lg border border-border text-sm">
           {items.map((i) => (
             <li key={i.id} className="flex items-center gap-3 px-3 py-2">
-              <span
-                className={`h-1.5 w-1.5 shrink-0 ${i.status === "ok" ? "bg-foreground" : i.status === "erro" ? "bg-[var(--signal)]" : i.status === "enviando" ? "animate-pulse bg-muted" : "bg-border-strong"}`}
-              />
+              <span className={`h-2 w-2 shrink-0 rounded-full ${i.status === "ok" ? "bg-ok" : i.status === "erro" ? "bg-danger" : i.status === "enviando" ? "animate-pulse bg-accent" : "bg-border-strong"}`} />
               <span className="min-w-0 flex-1 truncate">{i.file.name}</span>
-              <span className="shrink-0 text-xs text-muted">{i.status === "enviando" ? i.stage : i.message ?? formatBytes(i.file.size)}</span>
+              <span className={`shrink-0 text-xs ${i.status === "erro" ? "text-danger" : "text-muted"}`}>{i.status === "enviando" ? i.stage : (i.message ?? formatBytes(i.file.size))}</span>
               {i.status !== "enviando" && i.status !== "ok" && (
-                <button type="button" onClick={() => setItems((cur) => cur.filter((x) => x.id !== i.id))} className="text-xs text-muted hover:text-foreground" aria-label="Remover">
+                <button type="button" onClick={() => setItems((cur) => cur.filter((x) => x.id !== i.id))} className="text-muted hover:text-foreground" aria-label={`Remover ${i.file.name}`}>
                   ✕
                 </button>
               )}
@@ -150,20 +164,27 @@ export function AddPanel({
       )}
 
       {(canAnalyzeAny || text.trim()) && (
-        <label className={`flex items-start gap-2 text-xs ${aiReady ? "text-muted" : "text-muted/60"}`}>
-          <input type="checkbox" checked={analyze && aiReady} disabled={!aiReady} onChange={(e) => setAnalyze(e.target.checked)} className="mt-0.5" />
+        <label className={`flex items-start gap-2 text-sm ${aiReady ? "text-muted" : "text-muted/70"}`}>
+          <input type="checkbox" checked={analyze && aiReady} disabled={!aiReady} onChange={(e) => setAnalyze(e.target.checked)} className="mt-1" />
           <span>
             Pedir ao Jarvis para ler os arquivos e criar notas conectadas
-            {!aiReady && <span className="block text-[var(--signal)]">Claude API ainda não conectada: os arquivos serão só guardados (veja Ajustes).</span>}
+            {!aiReady && <span className="block text-warn">A Claude API ainda não está conectada: os arquivos serão só guardados (veja Ajustes).</span>}
           </span>
         </label>
       )}
 
       <div className="flex items-center gap-3">
-        <button disabled={busy || (!text.trim() && !items.length)} className="btn-primary px-5 py-2.5 disabled:opacity-40">
+        <button disabled={busy || (!text.trim() && !items.length)} className="btn-primary">
           {busy ? "Guardando…" : "Guardar"}
         </button>
-        {msg && <p role="status" className={`text-xs ${msg.ok ? "text-foreground" : "text-[var(--signal)]"}`}>{msg.text}</p>}
+        <span className="text-xs text-muted hidden sm:inline">
+          <span className="kbd">Ctrl</span> + <span className="kbd">Enter</span>
+        </span>
+        {msg && (
+          <p role="status" className={`text-sm ${msg.ok ? "text-ok" : "text-danger"}`}>
+            {msg.text}
+          </p>
+        )}
       </div>
     </form>
   );
