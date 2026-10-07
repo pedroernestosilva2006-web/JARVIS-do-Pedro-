@@ -140,5 +140,26 @@ begin
   assert v = 1, 'merge deveria guardar o título antigo como alias';
 end $$;
 
+-- ---- Arquivos (attachments): isolamento por workspace ------------------------
+reset role;
+insert into public.attachments (workspace_id, storage_path, file_name, size_bytes) values
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001/files/a.pdf', 'a.pdf', 10),
+  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002/files/b.pdf', 'b.pdf', 10);
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
+do $$
+declare v int;
+begin
+  select count(*) into v from public.attachments;
+  assert v = 1, format('usuário 1 deveria ver 1 arquivo, viu %s', v);
+  begin
+    insert into public.attachments (workspace_id, storage_path, file_name)
+    values ('00000000-0000-0000-0000-000000000002', 'x/y', 'y.pdf');
+    assert false, 'RLS deveria bloquear anexo em workspace alheio';
+  exception when insufficient_privilege or check_violation then null;
+  end;
+end $$;
+reset role;
+
 rollback;
 \echo 'TODOS OS TESTES SQL PASSARAM'

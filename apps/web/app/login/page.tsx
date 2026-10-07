@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { CheckerMark, JarvisMark, OrbitSphere, WaveField } from "@/components/brand/motifs";
 import { authErrorMessage, validateCredentials, MIN_PASSWORD_LENGTH } from "@/lib/auth-messages";
 
 type Mode = "entrar" | "criar" | "link";
@@ -44,13 +43,13 @@ export default function LoginPage() {
       if (mode === "entrar") {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) return setError(authErrorMessage(error.message, error.code));
-        router.replace("/inbox");
+        router.replace("/graph");
         router.refresh();
       } else if (mode === "criar") {
         const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: redirectTo } });
         if (error) return setError(authErrorMessage(error.message, error.code));
         if (data.session) {
-          router.replace("/inbox");
+          router.replace("/graph");
           router.refresh();
         } else {
           // Confirmação de e-mail ligada: o login só vale depois do clique no link
@@ -87,131 +86,83 @@ export default function LoginPage() {
     setInfo("Se houver uma conta com esse e-mail, enviamos um link para redefinir a senha.");
   }
 
+  const field = "field";
   return (
-    <main className="grid min-h-screen bg-background lg:grid-cols-[1.25fr_1fr]">
-      {/* Hero: esfera em órbita sobre ondas de linhas finas */}
-      <section className="relative flex min-h-[340px] flex-col overflow-hidden border-b border-border bg-[radial-gradient(ellipse_at_30%_20%,#1c1c1c_0%,#0a0a0a_65%)] px-6 py-6 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-12 lg:py-10">
-        <div className="kicker relative z-10 flex items-center gap-4">
-          <span>Capturar</span>
-          <span className="hidden sm:inline">Conectar</span>
-          <span className="hidden sm:inline">Conversar</span>
-          <span className="h-px flex-1 bg-border" />
-          <span>Jarvis · 2026</span>
-        </div>
-        <WaveField className="absolute inset-x-0 bottom-0 h-[70%] w-full" lines={46} amplitude={110} opacity={0.5} />
-        <div className="relative z-10 flex flex-1 items-center justify-center">
-          <OrbitSphere className="h-[220px] w-[220px] sm:h-[320px] sm:w-[320px] lg:h-[440px] lg:w-[440px]" />
-        </div>
-        <div className="relative z-10 flex items-end justify-between gap-6">
+    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent-text">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+              <ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-25 12 12)" />
+            </svg>
+          </span>
           <div>
-            <h1 className="display text-3xl text-foreground sm:text-5xl lg:text-6xl">Jarvis</h1>
-            <p className="display mt-2 text-xs text-muted sm:text-sm">Segundo cérebro</p>
+            <h1 className="text-xl font-semibold leading-tight">JARVIS</h1>
+            <p className="text-sm text-muted">Seu segundo cérebro</p>
           </div>
-          <div className="hidden max-w-[260px] border-t border-border pt-3 text-xs leading-relaxed text-muted md:block">
-            Mande um áudio depois da palestra, uma foto do livro ou um link. O Jarvis transforma tudo em notas
-            conectadas e conversa com você sobre o que aprendeu.
-          </div>
-          <CheckerMark className="hidden text-foreground/70 lg:block" />
         </div>
-      </section>
 
-      {/* Formulário */}
-      <section className="flex items-center justify-center px-6 py-10">
-        <form onSubmit={submit} className="w-full max-w-sm" noValidate>
-          <div className="kicker flex items-center gap-3">
-            <span>Acesso</span>
-            <span className="h-px flex-1 bg-border" />
-            <JarvisMark className="h-4 w-4 text-foreground" />
-          </div>
-          <h2 className="display mt-6 text-xl text-foreground">
-            {mode === "entrar" ? "Bem-vindo de volta" : mode === "criar" ? "Criar conta" : "Link mágico"}
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            {mode === "link" ? "Enviamos um link de acesso para o seu e-mail." : "Entre com seu e-mail e senha."}
-          </p>
+        <form onSubmit={submit} className="surface rounded-xl p-5" noValidate>
+          <h2 className="text-lg font-semibold">{mode === "entrar" ? "Bem-vindo de volta" : mode === "criar" ? "Criar conta" : "Link mágico"}</h2>
+          <p className="mt-1 text-sm text-muted">{mode === "link" ? "Enviamos um link de acesso para o seu e-mail." : "Entre com seu e-mail e senha."}</p>
 
-          <div role="tablist" className="mt-7 grid grid-cols-3 border-b border-border">
+          <div role="tablist" aria-label="Forma de acesso" className="mt-4 flex gap-1.5">
             {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={mode === t.id}
-                onClick={() => switchMode(t.id)}
-                className={`-mb-px border-b px-1 pb-2.5 text-[10.5px] uppercase tracking-[0.16em] transition ${
-                  mode === t.id ? "border-foreground text-foreground" : "border-transparent text-muted hover:text-foreground"
-                }`}
-              >
+              <button key={t.id} type="button" role="tab" aria-selected={mode === t.id} data-active={mode === t.id} onClick={() => switchMode(t.id)} className="chip">
                 {t.label}
               </button>
             ))}
           </div>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-5 space-y-4">
             <label className="block">
-              <span className="kicker">E-mail</span>
-              <input
-                type="email"
-                name="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                className="field mt-2 text-sm"
-              />
+              <span className="label">E-mail</span>
+              <input type="email" name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" className={`${field} mt-1.5`} />
             </label>
 
             {mode !== "link" && (
               <label className="block">
-                <span className="kicker">Senha{mode === "criar" ? ` · mínimo ${MIN_PASSWORD_LENGTH}` : ""}</span>
-                <div className="relative mt-2">
+                <span className="label">Senha{mode === "criar" ? ` (mínimo ${MIN_PASSWORD_LENGTH} caracteres)` : ""}</span>
+                <div className="relative mt-1.5">
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     autoComplete={mode === "criar" ? "new-password" : "current-password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="field pr-20 text-sm"
+                    className={`${field} pr-20`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-[0.14em] text-muted hover:text-foreground"
-                  >
-                    {showPassword ? "ocultar" : "mostrar"}
+                  <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-sm text-muted hover:text-foreground">
+                    {showPassword ? "Ocultar" : "Mostrar"}
                   </button>
                 </div>
               </label>
             )}
           </div>
 
-          <button disabled={busy} className="btn-primary mt-7 w-full px-4 py-3 disabled:opacity-50">
+          <button disabled={busy} className="btn-primary mt-6 w-full !py-2.5">
             {busy ? "Aguarde…" : mode === "entrar" ? "Entrar" : mode === "criar" ? "Criar conta" : "Enviar link de acesso"}
           </button>
 
           {mode === "entrar" && (
-            <button
-              type="button"
-              onClick={forgotPassword}
-              disabled={busy}
-              className="mt-4 block w-full text-center text-[10.5px] uppercase tracking-[0.16em] text-muted hover:text-foreground"
-            >
+            <button type="button" onClick={forgotPassword} disabled={busy} className="btn-ghost mt-2 w-full">
               Esqueci minha senha
             </button>
           )}
 
           {info && (
-            <p role="status" className="mt-5 border-l border-foreground pl-3 text-sm text-foreground">
+            <p role="status" className="mt-4 rounded-lg border border-border bg-surface-2 p-3 text-sm">
               {info}
             </p>
           )}
           {error && (
-            <p role="alert" className="mt-5 border-l border-[var(--signal)] pl-3 text-sm text-[var(--signal)]">
+            <p role="alert" className="mt-4 rounded-lg border border-danger/40 bg-surface-2 p-3 text-sm text-danger">
               {error}
             </p>
           )}
         </form>
-      </section>
+      </div>
     </main>
   );
 }

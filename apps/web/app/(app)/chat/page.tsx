@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Chat } from "@/components/chat/Chat";
 import { requireWorkspace } from "@/lib/workspace";
 
-export const metadata = { title: "Jarvis — chat" };
+export const metadata = { title: "Jarvis — JARVIS" };
 
 type Block = { type: string; text?: string; name?: string };
 
@@ -14,17 +14,12 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
     .select("id, title, updated_at")
     .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: false })
-    .limit(15);
+    .limit(20);
 
   // Reconstrói a conversa para a UI (tool_result fica oculto, tool_use vira "chip")
   const initial: { role: "user" | "assistant"; text: string; tools: string[] }[] = [];
   if (c) {
-    const { data: rows } = await supabase
-      .from("messages")
-      .select("role, content")
-      .eq("workspace_id", workspaceId)
-      .eq("conversation_id", c)
-      .order("created_at");
+    const { data: rows } = await supabase.from("messages").select("role, content").eq("workspace_id", workspaceId).eq("conversation_id", c).order("created_at");
     for (const r of rows ?? []) {
       const blocks: Block[] = typeof r.content === "string" ? [{ type: "text", text: r.content }] : (r.content as Block[]);
       if (r.role === "user") {
@@ -43,25 +38,24 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   }
 
   return (
-    <div className="flex">
-      <aside className="hidden w-56 shrink-0 border-r border-border p-3 lg:block">
-        <Link href="/chat" className="btn-outline mb-4 block px-3 py-2 text-center">
-          + Nova conversa
+    <div className="flex h-full min-h-0">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-border p-3 lg:flex">
+        <Link href="/chat" className="btn-primary mb-4 w-full">
+          Nova conversa
         </Link>
-        <ul className="space-y-1 text-sm">
+        <h2 className="mb-1 px-2 text-xs font-medium text-muted">Conversas recentes</h2>
+        <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto text-sm">
           {(conversations ?? []).map((cv) => (
             <li key={cv.id}>
-              <Link
-                href={`/chat?c=${cv.id}`}
-                className={`block truncate rounded px-2 py-1 hover:bg-panel-2 ${cv.id === c ? "bg-panel-2 text-foreground" : "text-muted"}`}
-              >
+              <Link href={`/chat?c=${cv.id}`} className={`row-hover block truncate rounded-lg px-2 py-1.5 ${cv.id === c ? "bg-accent-soft text-foreground" : "text-muted"}`}>
                 {cv.title ?? "Conversa"}
               </Link>
             </li>
           ))}
+          {!conversations?.length && <li className="px-2 text-muted">Nenhuma conversa ainda.</li>}
         </ul>
       </aside>
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <Chat key={c ?? "new"} initial={initial} conversationId={c ?? null} />
       </div>
     </div>

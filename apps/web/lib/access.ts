@@ -29,9 +29,21 @@ export interface AppContext {
 let cachedOwner: { userId: string; email: string | null; workspaceId: string; at: number } | null = null;
 const OWNER_TTL_MS = 5 * 60_000;
 
-/** Descobre (e cria, se preciso) o usuário e o workspace do dono para o modo interno. */
-export async function resolveOwner(): Promise<{ userId: string; email: string | null; workspaceId: string }> {
-  if (cachedOwner && Date.now() - cachedOwner.at < OWNER_TTL_MS) return cachedOwner;
+/**
+ * Descobre (e cria, se preciso) o usuário e o workspace do dono para o modo interno.
+ * Chamadas simultâneas (layout + página + APIs na primeira abertura) compartilham a mesma busca;
+ * sem isso cada uma criava o seu próprio workspace.
+ */
+let inflight: Promise<{ userId: string; email: string | null; workspaceId: string }> | null = null;
+export function resolveOwner(): Promise<{ userId: string; email: string | null; workspaceId: string }> {
+  if (cachedOwner && Date.now() - cachedOwner.at < OWNER_TTL_MS) return Promise.resolve(cachedOwner);
+  inflight ??= loadOwner().finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
+async function loadOwner(): Promise<{ userId: string; email: string | null; workspaceId: string }> {
   const admin = createAdminClient();
 
   const { data: list, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });

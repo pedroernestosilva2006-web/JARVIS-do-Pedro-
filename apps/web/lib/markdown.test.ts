@@ -26,3 +26,15 @@ describe("renderMarkdown", () => {
     expect(renderMarkdown("[x](javascript:alert(1))")).not.toContain("href=\"javascript");
   });
 });
+
+describe("renderMarkdown com citações (chat)", () => {
+  it("transforma [[Título]] em chip clicável e escapa HTML", () => {
+    const html = renderMarkdown("Veja [[Cadência de outbound|cadência]] e <b>x</b>", { cite: true });
+    expect(html).toContain('<button type="button" class="cite" data-cite="Cadência de outbound">cadência</button>');
+    expect(html).not.toContain("<b>");
+    expect(html).not.toContain("/notes/resolve");
+  });
+  it("sem a opção, continua gerando o link de wikilink", () => {
+    expect(renderMarkdown("[[Aaron Ross]]")).toContain('href="/notes/resolve?title=Aaron%20Ross"');
+  });
+});

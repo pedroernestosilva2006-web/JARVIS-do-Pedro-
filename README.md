@@ -17,7 +17,9 @@ ingestão, Sonnet 5.5 no chat) · OpenAI (embeddings + transcrição) · Sigma.j
 - **Pipeline**: normalização (transcrição, vision, PDF, artigo), extração estruturada, entity resolution
   (reusar/perguntar/criar), notas atômicas com proveniência, links tipados, embeddings automáticos e sugestão de
   links semânticos com relação e justificativa. Usa fila pgmq com retry e é idempotente.
-- **Inbox**: sementes, conexões sugeridas (aceitar/rejeitar), merges de entidades e propostas de MOC.
+- **Cérebro** (home): grafo em tela cheia no estilo do Obsidian — clique num ponto para abrir o painel da nota (ler, editar, conexões por relação, sugestões da IA, arquivos, grafo local); painel flutuante com Filtros · Grupos · Exibição · Forças.
+- **Barra de comando** (Ctrl/Cmd+K, ou o botão +): captura uma ideia/link/arquivo, busca notas, pula para um nó e pergunta ao Jarvis. Arquivos de até 50 MB podem ser soltos em qualquer tela.
+- **Notas · Timeline · Arquivos**: lista à esquerda + leitura à direita. **Revisar (N)**: gaveta com sementes, conexões sugeridas e decisões pendentes. **Jarvis**: dock de chat (tecla J) com citações clicáveis.
 - **Notas**: editor markdown com `[[wikilinks]]`, backlinks, fontes e notas relacionadas por semântica.
 - **Grafo**: WebGL, cor por tipo ou comunidade, tamanho ∝ √grau, fade de rótulos, hover na vizinhança, filtros,
   "ver o cérebro crescer", foco numa nota, layout ForceAtlas2 com posições salvas.

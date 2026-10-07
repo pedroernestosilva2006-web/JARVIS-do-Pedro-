@@ -69,27 +69,29 @@ const app = spawn(path.join(webDir, "node_modules/.bin/next"), ["start", "-p", "
   },
   stdio: "ignore",
 });
-await waitFor(() => fetch(`${APP}/inbox`).then((r) => r.ok).catch(() => false), 60_000);
+await waitFor(() => fetch(`${APP}/graph`).then((r) => r.ok).catch(() => false), 60_000);
 
 await step("sem sessão: páginas abrem como o dono (sem redirecionar ao login)", async () => {
-  for (const p of ["/inbox", "/notes", "/graph", "/chat", "/timeline", "/settings"]) {
+  for (const p of ["/graph", "/notes", "/files", "/chat", "/timeline", "/settings"]) {
     const r = await fetch(`${APP}${p}`, { redirect: "manual" });
     assert.equal(r.status, 200, `${p} → ${r.status}`);
   }
-  const html = await (await fetch(`${APP}/inbox`)).text();
-  assert.match(html, /Acesso interno/);
-  assert.equal((await fetch(`${APP}/inbox`)).headers.get("x-robots-tag"), "noindex, nofollow");
+  const html = await (await fetch(`${APP}/settings`)).text();
+  assert.match(html, /O login está desligado/);
+  assert.match(html, /Falta definir na Vercel/, "semáforo diz qual variável falta (OpenAI não está definida neste teste)");
+  assert.doesNotMatch(html, /gw-e2e/, "valores de variáveis nunca aparecem");
+  assert.equal((await fetch(`${APP}/graph`)).headers.get("x-robots-tag"), "noindex, nofollow");
 });
 
 await step("/login redireciona para o app", async () => {
   const r = await fetch(`${APP}/login`, { redirect: "manual" });
   assert.ok([307, 308].includes(r.status));
-  assert.match(r.headers.get("location"), /\/inbox$/);
+  assert.match(r.headers.get("location"), /\/graph$/);
 });
 
 let workspaceId;
 await step("o workspace é o do dono (criado se não existia)", async () => {
-  await fetch(`${APP}/inbox`);
+  await fetch(`${APP}/graph`);
   const { data } = await admin.from("workspace_members").select("workspace_id").eq("user_id", ownerId);
   assert.equal(data.length, 1);
   workspaceId = data[0].workspace_id;
@@ -139,6 +141,64 @@ await step("exportação e grafo abrem sem sessão", async () => {
   assert.equal((await fetch(`${APP}/api/export`)).status, 200);
   const snap = await (await fetch(`${APP}/api/graph`)).json();
   assert.ok(snap.nodes.length >= 4);
+});
+
+await step("arquivos: assina → envia direto ao Storage → cataloga → baixa → painel da nota", async () => {
+  const content = Buffer.from("Anotação solta sobre follow-up: sempre registre o próximo passo ao final da reunião.");
+  const signRes = await fetch(`${APP}/api/files/sign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: "Reunião de vendas.txt", mimeType: "text/plain", size: content.length }) });
+  const sign = await signRes.json();
+  assert.equal(signRes.status, 200, JSON.stringify(sign));
+  assert.ok(sign.path.startsWith(`${workspaceId}/files/`), sign.path);
+  assert.match(sign.path, /^[0-9a-f-]{36}\/files\/[0-9a-f-]{36}-Reuniao-de-vendas\.txt$/);
+  const up = await admin.storage.from("captures").uploadToSignedUrl(sign.path, sign.token, content, { contentType: "text/plain" });
+  assert.ok(!up.error, up.error?.message);
+  // caminho de outro workspace é recusado
+  const bad = await fetch(`${APP}/api/files/commit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: `${randomUUID()}/files/x.txt`, fileName: "x.txt" }) });
+  assert.ok(bad.status >= 400, `commit de caminho alheio deveria falhar (${bad.status})`);
+  const { data: anyNote } = await admin.from("notes").select("id").eq("workspace_id", workspaceId).limit(1).single();
+  const commit = await fetch(`${APP}/api/files/commit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: sign.path, fileName: "Reunião de vendas.txt", mimeType: "text/plain", noteId: anyNote.id, analyze: false }) });
+  const c = await commit.json();
+  assert.equal(commit.status, 200, JSON.stringify(c));
+  const { data: att } = await admin.from("attachments").select("*").eq("id", c.attachmentId).single();
+  assert.equal(att.workspace_id, workspaceId);
+  assert.equal(att.file_name, "Reunião de vendas.txt");
+  assert.equal(att.note_id, anyNote.id);
+  const dl = await fetch(`${APP}/api/files/${c.attachmentId}/download`, { redirect: "manual" });
+  assert.equal(dl.status, 302);
+  const file = await fetch(dl.headers.get("location"));
+  assert.equal(Buffer.from(await file.arrayBuffer()).toString(), content.toString());
+  const detail = await (await fetch(`${APP}/api/notes/${anyNote.id}`)).json();
+  assert.ok(detail.files.some((f) => f.id === c.attachmentId), "painel da nota lista o arquivo");
+  assert.ok(Array.isArray(detail.links));
+  const page = await (await fetch(`${APP}/files`)).text();
+  assert.match(page, /Reuni(ã|&#x27;|)o de vendas|Reunião/);
+});
+
+await step("arquivo com análise: vira fonte e o Jarvis cria notas (texto, sem OpenAI)", async () => {
+  const content = Buffer.from("Sempre confirme o decisor antes de enviar proposta. A maioria das respostas em outbound vem depois do quarto toque.");
+  const sign = await (await fetch(`${APP}/api/files/sign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: "nota.md", size: content.length }) })).json();
+  await admin.storage.from("captures").uploadToSignedUrl(sign.path, sign.token, content, { contentType: "text/markdown" });
+  const r = await fetch(`${APP}/api/files/commit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: sign.path, fileName: "nota.md", mimeType: "text/markdown", analyze: true }) });
+  const c = await r.json();
+  assert.equal(r.status, 200, JSON.stringify(c));
+  assert.ok(c.sourceId, "criou a fonte");
+  await waitFor(async () => (await admin.from("sources").select("status").eq("id", c.sourceId).single()).data.status === "done");
+});
+
+await step("apagar arquivo remove do catálogo e do Storage", async () => {
+  const { data: atts } = await admin.from("attachments").select("id, storage_path").eq("workspace_id", workspaceId).limit(1);
+  const a = atts[0];
+  await admin.storage.from("captures").remove([a.storage_path]);
+  await admin.from("attachments").delete().eq("id", a.id).eq("workspace_id", workspaceId);
+  const { data } = await admin.from("attachments").select("id").eq("id", a.id);
+  assert.equal(data.length, 0);
+});
+
+await step("teste de conexão com o Claude funciona pelo gateway", async () => {
+  const r = await fetch(`${APP}/api/health/ai`, { method: "POST" });
+  const d = await r.json();
+  assert.equal(d.ok, true, JSON.stringify(d));
+  assert.equal(d.provider, "gateway");
 });
 
 try {

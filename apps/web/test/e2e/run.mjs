@@ -121,10 +121,10 @@ async function main() {
   });
 
   await step("páginas protegidas: sem sessão → /login; com sessão → 200", async () => {
-    const anon = await fetch(`${APP}/inbox`, { redirect: "manual" });
+    const anon = await fetch(`${APP}/graph`, { redirect: "manual" });
     assert.equal(anon.status, 307);
     assert.match(anon.headers.get("location"), /\/login$/);
-    for (const p of ["/inbox", "/notes", "/graph", "/chat", "/timeline", "/settings"]) {
+    for (const p of ["/graph", "/notes", "/files", "/chat", "/timeline", "/settings"]) {
       const r = await fetch(`${APP}${p}`, { headers: { cookie } });
       assert.equal(r.status, 200, `${p} → ${r.status}`);
     }
@@ -243,11 +243,20 @@ async function main() {
     assert.equal(save.status, 200);
   });
 
-  await step("página da nota renderiza backlinks e proveniência", async () => {
-    const html = await (await fetch(`${APP}/notes/${insightId}`, { headers: { cookie } })).text();
-    assert.ok(html.includes("Cadência de oito toques"), "título");
-    assert.ok(html.includes("quarto toque"), "trecho da fonte");
-    assert.ok(html.includes("RD Summit 2026"), "link para o evento");
+  await step("painel da nota traz conexões e proveniência; /notes/:id e /inbox redirecionam", async () => {
+    const detail = await (await fetch(`${APP}/api/notes/${insightId}`, { headers: { cookie } })).json();
+    assert.ok(detail.note.title.includes("Cadência de oito toques"), "título");
+    assert.ok(detail.excerpts.some((x) => x.includes("quarto toque")), "trecho da fonte");
+    assert.ok(detail.links.some((l) => l.other?.title === "RD Summit 2026"), "link para o evento");
+    const old = await fetch(`${APP}/notes/${insightId}`, { headers: { cookie }, redirect: "manual" });
+    assert.equal(old.status, 307);
+    assert.match(old.headers.get("location"), new RegExp(`/notes\\?sel=${insightId}$`));
+    const inbox = await fetch(`${APP}/inbox`, { headers: { cookie }, redirect: "manual" });
+    assert.match(inbox.headers.get("location"), /\/graph\?review=1$/);
+    const review = await (await fetch(`${APP}/api/review`, { headers: { cookie } })).json();
+    assert.ok(Array.isArray(review.seeds) && review.seeds.length > 0, "fila de revisão tem sementes");
+    const count = await (await fetch(`${APP}/api/review?count=1`, { headers: { cookie } })).json();
+    assert.ok(count.count >= review.seeds.length);
   });
 
   await step("chat com o Jarvis: streaming + tool search_knowledge + persistência", async () => {
@@ -323,7 +332,7 @@ async function main() {
     assert.equal(data.length, 0);
     const snap = await (await fetch(`${APP}/api/graph`, { headers: { cookie: c2 } })).json();
     assert.equal(snap.nodes.length, 0);
-    const page = await fetch(`${APP}/notes/${insightId}`, { headers: { cookie: c2 } });
+    const page = await fetch(`${APP}/api/notes/${insightId}`, { headers: { cookie: c2 } });
     assert.equal(page.status, 404);
     const titles = await (await fetch(`${APP}/api/notes/titles?q=cad`, { headers: { cookie: c2 } })).json();
     assert.equal(titles.length, 0, "autocomplete não pode vazar títulos");

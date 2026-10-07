@@ -85,9 +85,9 @@ export const DEFAULT_AREAS = [
 
 /** Paleta estilo Obsidian (fundo escuro) por tipo de nó. */
 export const TYPE_COLORS: Record<NoteType, string> = {
-  insight: "#a882ff",
-  citacao: "#c4a7ff",
-  pergunta: "#8b9cff",
+  insight: "#f472b6",
+  citacao: "#bef264",
+  pergunta: "#f0abfc",
   evento: "#ff9f43",
   diario: "#d9a066",
   livro: "#4cd27a",
@@ -97,10 +97,11 @@ export const TYPE_COLORS: Record<NoteType, string> = {
   ferramenta: "#7fd1b9",
   lugar: "#b5a17f",
   ideia: "#ffd43b",
-  projeto: "#ff5c5c",
-  tarefa: "#ff8a8a",
+  projeto: "#f05252",
+  tarefa: "#fca5a5",
   moc: "#ffffff",
 };
+// (o roxo da interface é reservado ao acento: seleção, foco e sugestões da IA)
 
 /**
  * Paleta monocromática (padrão da interface): o tipo vira luminosidade.

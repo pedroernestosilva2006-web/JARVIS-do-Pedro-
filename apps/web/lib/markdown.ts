@@ -9,7 +9,7 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-function inline(text: string): string {
+function inline(text: string, cite = false): string {
   // Wikilinks primeiro (com placeholders para não serem escapados/reformatados)
   const links: string[] = [];
   let out = "";
@@ -17,8 +17,11 @@ function inline(text: string): string {
   for (const l of parseWikilinks(text)) {
     out += text.slice(last, l.start);
     const label = l.alias ?? l.target;
+    // No chat, a citação vira um chip que foca o nó no grafo (o clique é tratado no cliente)
     links.push(
-      `<a class="wikilink" href="/notes/resolve?title=${encodeURIComponent(l.target)}">${escapeHtml(label)}</a>`,
+      cite
+        ? `<button type="button" class="cite" data-cite="${escapeHtml(l.target)}">${escapeHtml(label)}</button>`
+        : `<a class="wikilink" href="/notes/resolve?title=${encodeURIComponent(l.target)}">${escapeHtml(label)}</a>`,
     );
     out += `\u0000${links.length - 1}\u0000`;
     last = l.end;
@@ -35,7 +38,8 @@ function inline(text: string): string {
   return html;
 }
 
-export function renderMarkdown(md: string): string {
+export function renderMarkdown(md: string, opts: { cite?: boolean } = {}): string {
+  const cite = opts.cite ?? false;
   const lines = md.replace(/\r\n/g, "\n").split("\n");
   const out: string[] = [];
   let list: "ul" | "ol" | null = null;
@@ -43,7 +47,7 @@ export function renderMarkdown(md: string): string {
   let quote: string[] = [];
 
   const flushPara = () => {
-    if (para.length) out.push(`<p>${para.map(inline).join("<br/>")}</p>`);
+    if (para.length) out.push(`<p>${para.map((t) => inline(t, cite)).join("<br/>")}</p>`);
     para = [];
   };
   const flushList = () => {
@@ -51,7 +55,7 @@ export function renderMarkdown(md: string): string {
     list = null;
   };
   const flushQuote = () => {
-    if (quote.length) out.push(`<blockquote>${quote.map(inline).join("<br/>")}</blockquote>`);
+    if (quote.length) out.push(`<blockquote>${quote.map((t) => inline(t, cite)).join("<br/>")}</blockquote>`);
     quote = [];
   };
   const flushAll = () => {
@@ -67,7 +71,7 @@ export function renderMarkdown(md: string): string {
       flushAll();
     } else if ((m = line.match(/^(#{1,3})\s+(.*)$/))) {
       flushAll();
-      out.push(`<h${m[1]!.length}>${inline(m[2]!)}</h${m[1]!.length}>`);
+      out.push(`<h${m[1]!.length}>${inline(m[2]!, cite)}</h${m[1]!.length}>`);
     } else if ((m = line.match(/^>\s?(.*)$/))) {
       flushPara();
       flushList();
@@ -80,7 +84,7 @@ export function renderMarkdown(md: string): string {
         out.push("<ul>");
         list = "ul";
       }
-      out.push(`<li>${inline(m[1]!)}</li>`);
+      out.push(`<li>${inline(m[1]!, cite)}</li>`);
     } else if ((m = line.match(/^\s*\d+[.)]\s+(.*)$/))) {
       flushPara();
       flushQuote();
@@ -89,7 +93,7 @@ export function renderMarkdown(md: string): string {
         out.push("<ol>");
         list = "ol";
       }
-      out.push(`<li>${inline(m[1]!)}</li>`);
+      out.push(`<li>${inline(m[1]!, cite)}</li>`);
     } else {
       flushList();
       flushQuote();
