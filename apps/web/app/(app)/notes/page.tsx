@@ -50,6 +50,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
         title="Tudo é nota"
         subtitle="Insights, pessoas, livros, eventos, ideias e MOCs. Busque, filtre ou crie uma nova."
         actions={
+        <div className="flex flex-wrap items-center gap-3"><Link href="/timeline" className="text-[10.5px] uppercase tracking-[0.14em] text-muted hover:text-foreground">Timeline</Link>
         <form action={createNoteAction} className="flex gap-2">
             <select name="type" defaultValue="insight" className="field !w-auto !py-1.5 text-sm">
               {NOTE_TYPES.map((t) => (
@@ -65,7 +66,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
               className="field text-sm "
             />
             <button className="btn-primary px-3">Criar</button>
-          </form>
+          </form></div>
         }
       />
 

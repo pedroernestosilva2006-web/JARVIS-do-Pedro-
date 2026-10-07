@@ -113,10 +113,14 @@ interface Props {
   note: { id: string; title: string; content_md: string; summary: string | null; type: string; stage: string; aliases: string[] };
   renderedHtml: string;
   startEditing?: boolean;
+  /** Chamado depois de salvar (o painel do grafo atualiza o conteúdo e o desenho). */
+  onSaved?: () => void;
+  /** Esconde o título grande (o painel já mostra o seu). */
+  compactTitle?: boolean;
 }
 
 /** Visualização/edição de nota. Markdown com [[wikilinks]] — ao salvar, os links do grafo são sincronizados. */
-export function NoteEditor({ note, renderedHtml, startEditing }: Props) {
+export function NoteEditor({ note, renderedHtml, startEditing, onSaved, compactTitle }: Props) {
   const [editing, setEditing] = useState(!!startEditing);
   const [form, setForm] = useState({
     title: note.title,
@@ -135,6 +139,7 @@ export function NoteEditor({ note, renderedHtml, startEditing }: Props) {
         const r = await saveNoteAction(note.id, form);
         setMsg(`Salvo. Links: +${r.added} −${r.removed}`);
         setEditing(false);
+        onSaved?.();
       } catch (e) {
         setMsg(`Erro: ${e instanceof Error ? e.message : e}`);
       }
@@ -144,7 +149,7 @@ export function NoteEditor({ note, renderedHtml, startEditing }: Props) {
     return (
       <div>
         <div className="mb-2 flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-medium leading-snug tracking-tight text-foreground md:text-3xl">{note.title}</h1>
+          <h1 className={compactTitle ? "text-lg font-medium leading-snug text-foreground" : "text-2xl font-medium leading-snug tracking-tight text-foreground md:text-3xl"}>{note.title}</h1>
           <button onClick={() => setEditing(true)} className="btn-outline shrink-0 px-3.5 py-1.5">
             Editar
           </button>

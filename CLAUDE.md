@@ -34,6 +34,11 @@ Antes de mudanças estruturais leia docs/PRD.md, docs/ARCHITECTURE.md e docs/TAX
 - Funções SQL novas: `set search_path`, recebem `p_workspace`, e entram no `revoke/grant` de `…_grants.sql`.
 - Após cada migration: `supabase db reset`, testes SQL e advisors de segurança (MCP do Supabase).
 
+## Arquivos
+- Upload SEMPRE direto ao Storage por URL assinada (`/api/files/sign` → `uploadToSignedUrl` → `/api/files/commit`); a Vercel limita o corpo a ~4,5 MB. Catálogo na tabela `attachments` (`workspace_id` + RLS); caminho `${workspace}/files/${uuid}-${nome-seguro}`.
+- Regras puras em `lib/files/rules.ts` (limite 50 MB, nome seguro, o que o Jarvis consegue analisar).
+- Painel do ponto do grafo: `components/graph/NoteDrawer.tsx` ← `/api/notes/[id]`. Eventos `jarvis:changed` / `jarvis:add` conectam modal, grafo e painel.
+
 ## Acesso
 - Uso interno: **sem login por padrão** (`lib/access.ts` → `getAppContext()`; `JARVIS_REQUIRE_LOGIN=1` volta a exigir). No modo interno o app usa o cliente de serviço, então TODA consulta precisa filtrar `workspace_id`.
 - Toda rota/página obtém usuário e workspace por `getAppContext()`/`requireWorkspace()`; nunca chame `auth.getUser()` direto.

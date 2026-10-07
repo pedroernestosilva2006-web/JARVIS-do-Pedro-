@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import { Button, Card, NoteLink, StageBadge, TypeBadge, timeAgo } from "@/components/ui";
 import { renderMarkdown } from "@/lib/markdown";
+import { fileTypeLabel, formatBytes } from "@/lib/files/rules";
 import { requireWorkspace } from "@/lib/workspace";
 import { linkToRelatedAction } from "../../actions";
 
@@ -19,7 +20,7 @@ export default async function NotePage({
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { supabase, workspaceId } = await requireWorkspace();
 
-  const [{ data: note }, { data: outgoing }, { data: incoming }, { data: sources }, { data: related }] = await Promise.all([
+  const [{ data: note }, { data: outgoing }, { data: incoming }, { data: sources }, { data: related }, { data: directFiles }] = await Promise.all([
     supabase.from("notes").select("*").eq("id", id).eq("workspace_id", workspaceId).maybeSingle(),
     supabase
       .from("links")
@@ -39,6 +40,7 @@ export default async function NotePage({
       .eq("workspace_id", workspaceId)
       .eq("note_id", id),
     supabase.rpc("related_notes", { p_workspace: workspaceId, p_note: id, match_count: 6 }),
+    supabase.from("attachments").select("id, file_name, mime_type, size_bytes").eq("workspace_id", workspaceId).eq("note_id", id),
   ]);
   if (!note) notFound();
 
@@ -104,6 +106,19 @@ export default async function NotePage({
       </article>
 
       <aside className="space-y-4">
+        {!!directFiles?.length && (
+          <Card title={`Arquivos (${directFiles.length})`}>
+            <ul className="space-y-1.5 text-sm">
+              {directFiles.map((f) => (
+                <li key={f.id} className="flex items-center gap-2">
+                  <span className="kicker w-12 shrink-0">{fileTypeLabel(f.file_name, f.mime_type)}</span>
+                  <a href={`/api/files/${f.id}/download`} className="min-w-0 flex-1 truncate hover:underline">{f.file_name}</a>
+                  <span className="text-xs text-muted">{formatBytes(f.size_bytes ?? 0)}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
         <Card title={`Backlinks (${incoming?.length ?? 0})`}>
           <ul className="space-y-1.5 text-sm">
             {(incoming ?? []).map((l) => {

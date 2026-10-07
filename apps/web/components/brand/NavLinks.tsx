@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/inbox", label: "Inbox", n: "01" },
+  { href: "/graph", label: "Cérebro", n: "01" },
   { href: "/notes", label: "Notas", n: "02" },
-  { href: "/graph", label: "Grafo", n: "03" },
+  { href: "/files", label: "Arquivos", n: "03" },
   { href: "/chat", label: "Jarvis", n: "04" },
-  { href: "/timeline", label: "Timeline", n: "05" },
+  { href: "/inbox", label: "Revisar", n: "05" },
   { href: "/settings", label: "Ajustes", n: "06" },
 ];
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { STAGES, isNoteType } from "@jarvis/core";
 import { createNote, syncWikilinks, upsertLink } from "@/lib/ingest/notes-repo";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { pairingCode, randomToken, sha256 } from "@/lib/security";
 import { createClient } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
@@ -145,3 +146,27 @@ export async function disconnectChannelAction(id: string) {
   revalidatePath("/settings");
 }
 
+
+/** Cria uma nota nova já ligada a outra (botão "Nova nota ligada" no painel do cérebro). */
+export async function createLinkedNoteAction(fromId: string, title: string): Promise<{ id: string } | { error: string }> {
+  const { supabase, workspaceId } = await requireWorkspace();
+  const clean = title.trim();
+  if (!clean) return { error: "Dê um título à nota." };
+  const { data: from } = await supabase.from("notes").select("id").eq("id", fromId).eq("workspace_id", workspaceId).maybeSingle();
+  if (!from) return { error: "Nota de origem não encontrada." };
+  const note = await createNote(supabase, workspaceId, { type: "insight", title: clean, created_by: "user" });
+  await upsertLink(supabase, workspaceId, { from: fromId, to: note.id, relation: "relacionado", origin: "manual" });
+  revalidatePath("/notes");
+  return { id: note.id };
+}
+
+/** Apaga um arquivo (do Storage e do catálogo). */
+export async function deleteAttachmentAction(id: string) {
+  const { workspaceId } = await requireWorkspace();
+  const admin = createAdminClient();
+  const { data } = await admin.from("attachments").select("storage_path").eq("id", id).eq("workspace_id", workspaceId).maybeSingle();
+  if (!data) return;
+  await admin.storage.from("captures").remove([data.storage_path]);
+  await admin.from("attachments").delete().eq("id", id).eq("workspace_id", workspaceId);
+  revalidatePath("/files");
+}

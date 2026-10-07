@@ -66,3 +66,7 @@ Observação: o plano Hobby da Vercel é só para uso pessoal e não comercial. 
    `curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" -d url=https://<app>.vercel.app/api/capture/telegram -d secret_token=$TELEGRAM_WEBHOOK_SECRET`
 2. Entrar no app → Configurações → gerar código → `/conectar CODIGO` no bot.
 3. Rodar `pnpm eval:ingest` com as chaves reais.
+
+
+## Arquivos (migration 0008)
+Aplique `supabase/migrations/20261007000008_attachments.sql` no Supabase hospedado (tabela `attachments` + limite de 50 MB no bucket `captures`). Depois confira em Ajustes → Conexões e use “Testar Claude” para validar a `ANTHROPIC_API_KEY`.

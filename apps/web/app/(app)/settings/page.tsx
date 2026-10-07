@@ -1,8 +1,11 @@
 import { PageHeader } from "@/components/brand/motifs";
+import { AiTest } from "@/components/settings/AiTest";
 import { ChangePassword } from "@/components/settings/ChangePassword";
 import { McpTokenCreator, TelegramPairing } from "@/components/settings/SecretsPanel";
 import { Button, Card, timeAgo } from "@/components/ui";
 import { daysAgoIso } from "@/lib/dates";
+import { aiProvider } from "@/lib/ai/llm";
+import { embeddingsConfigured } from "@/lib/ai/provider";
 import { env } from "@/lib/env";
 import { requireWorkspace } from "@/lib/workspace";
 import { disconnectChannelAction, revokeApiTokenAction, saveProfileAction } from "../actions";
@@ -34,6 +37,24 @@ export default async function SettingsPage() {
         title="Configurações"
         subtitle="Perfil do Jarvis, senha, Telegram, acesso via MCP, backup e uso de IA."
       />
+
+      <Card title="Conexões">
+        <ul className="mb-4 divide-y divide-border text-sm">
+          {[
+            ["Claude (API Anthropic / AI Gateway)", aiProvider().kind !== "none", aiProvider().kind === "none" ? "defina ANTHROPIC_API_KEY na Vercel" : `via ${aiProvider().kind === "anthropic" ? "API direta" : "AI Gateway"}`],
+            ["Busca por significado (OpenAI, opcional)", embeddingsConfigured(process.env), "sem ela a busca usa só palavras-chave"],
+            ["Telegram", !!process.env.TELEGRAM_BOT_TOKEN, "defina TELEGRAM_BOT_TOKEN para capturar pelo celular"],
+            ["Banco (chave de serviço)", !!(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY), "defina SUPABASE_SECRET_KEY"],
+          ].map(([name, ok, hint]) => (
+            <li key={String(name)} className="flex items-center gap-3 py-2">
+              <span className={`h-1.5 w-1.5 shrink-0 ${ok ? "bg-foreground" : "bg-[var(--signal)]"}`} />
+              <span className="flex-1">{String(name)}</span>
+              <span className="text-xs text-muted">{ok ? "conectado" : String(hint)}</span>
+            </li>
+          ))}
+        </ul>
+        <AiTest />
+      </Card>
 
       <Card title="Perfil (contexto fixo do Jarvis)">
         <form action={saveProfileAction} className="space-y-2">

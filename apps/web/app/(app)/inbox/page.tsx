@@ -1,5 +1,6 @@
 import { PageHeader, Stat, WaveField } from "@/components/brand/motifs";
-import { CaptureBox } from "@/components/inbox/CaptureBox";
+import { AddPanel } from "@/components/add/AddPanel";
+import { aiProvider } from "@/lib/ai/llm";
 import { Button, Card, NoteLink, TypeBadge, timeAgo } from "@/components/ui";
 import { requireWorkspace } from "@/lib/workspace";
 import { resolveReviewItemAction, reviewLinkAction, setStageAction } from "../actions";
@@ -44,7 +45,7 @@ export default async function InboxPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 md:px-10 md:py-10">
       <PageHeader
-        index="01 — Inbox"
+        index="05 — Revisar"
         section="Capturar · Revisar · Conectar"
         title="O que você aprendeu"
         subtitle="Capture uma ideia, revise as sementes e aprove as conexões que a IA sugeriu."
@@ -61,7 +62,7 @@ export default async function InboxPage() {
         <WaveField className="pointer-events-none absolute -right-10 -top-10 h-48 w-[60%] opacity-60" lines={24} amplitude={50} opacity={0.35} />
         <div className="relative">
           <h2 className="kicker mb-4">Captura rápida</h2>
-        <CaptureBox />
+        <AddPanel aiReady={aiProvider().kind !== "none"} />
         {!!sources?.length && (
           <ul className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted">
             {sources.map((s) => (

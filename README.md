@@ -17,7 +17,8 @@ ingestão, Sonnet 5.5 no chat) · OpenAI (embeddings + transcrição) · Sigma.j
 - **Pipeline**: normalização (transcrição, vision, PDF, artigo), extração estruturada, entity resolution
   (reusar/perguntar/criar), notas atômicas com proveniência, links tipados, embeddings automáticos e sugestão de
   links semânticos com relação e justificativa. Usa fila pgmq com retry e é idempotente.
-- **Inbox**: sementes, conexões sugeridas (aceitar/rejeitar), merges de entidades e propostas de MOC.
+- **Cérebro** (home): clique num ponto para abrir o painel — ler, editar, ver conexões, anexar arquivos e criar notas ligadas. **+ Adicionar** (em qualquer página) guarda texto e arquivos de até 50 MB (PDF, imagem, áudio, texto…); marque “Jarvis analisar” para virarem notas. **Arquivos**: biblioteca com busca, download e exclusão.
+- **Revisar** (antiga Inbox): sementes, conexões sugeridas (aceitar/rejeitar), merges de entidades e propostas de MOC.
 - **Notas**: editor markdown com `[[wikilinks]]`, backlinks, fontes e notas relacionadas por semântica.
 - **Grafo**: WebGL, cor por tipo ou comunidade, tamanho ∝ √grau, fade de rótulos, hover na vizinhança, filtros,
   "ver o cérebro crescer", foco numa nota, layout ForceAtlas2 com posições salvas.

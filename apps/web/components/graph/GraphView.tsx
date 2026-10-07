@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import Graph from "graphology";
 import louvain from "graphology-communities-louvain";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
@@ -9,6 +8,7 @@ import forceAtlas2 from "graphology-layout-forceatlas2";
 import type Sigma from "sigma";
 import { NOTE_TYPES, TYPE_COLORS, TYPE_LABELS, TYPE_TONES, communityColor, nodeColor, nodeSize, nodeTone, type NoteType } from "@jarvis/core";
 import { CheckerMark } from "@/components/brand/motifs";
+import { NoteDrawer } from "@/components/graph/NoteDrawer";
 import type { GraphSnapshot } from "@/lib/types";
 
 type ColorMode = "mono" | "type" | "community";
@@ -27,12 +27,17 @@ const SIGNAL = "#e5322d";
  * hover destaca vizinhança, ForceAtlas2 em web worker com posições salvas no banco,
  * filtros (tipo, órfãs, sugestões) e animação "ver o cérebro crescer".
  */
-export function GraphView({ focusId }: { focusId?: string }) {
+export function GraphView({ focusId, aiReady = false }: { focusId?: string; aiReady?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<Graph | null>(null);
   const layoutRef = useRef<FA2Layout | null>(null);
-  const stateRef = useRef<{ hovered: string | null; neighbors: Set<string> }>({ hovered: null, neighbors: new Set() });
+  const stateRef = useRef<{ hovered: string | null; neighbors: Set<string>; selected: string | null; selNeighbors: Set<string> }>({
+    hovered: null,
+    neighbors: new Set(),
+    selected: null,
+    selNeighbors: new Set(),
+  });
 
   const [snapshot, setSnapshot] = useState<GraphSnapshot | null>(null);
   const [error, setError] = useState("");
@@ -41,7 +46,8 @@ export function GraphView({ focusId }: { focusId?: string }) {
   const [hideOrphans, setHideOrphans] = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
   const [labelThreshold, setLabelThreshold] = useState(7);
-  const [selected, setSelected] = useState<GraphSnapshot["nodes"][number] | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(focusId ?? null);
+  const [showFilters, setShowFilters] = useState(false);
   const [edgeInfo, setEdgeInfo] = useState<string>("");
   const [search, setSearch] = useState("");
   const [layoutRunning, setLayoutRunning] = useState(false);
@@ -52,11 +58,35 @@ export function GraphView({ focusId }: { focusId?: string }) {
   const filtersRef = useRef({ hiddenTypes, hideOrphans, showSuggested, timeCut });
   const colorModeRef = useRef<ColorMode>(colorMode);
 
-  useEffect(() => {
+  const loadSnapshot = useCallback(() => {
     fetch("/api/graph")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.statusText))))
       .then(setSnapshot)
       .catch((e) => setError(String(e)));
+  }, []);
+
+  useEffect(() => {
+    loadSnapshot();
+    // Qualquer adição/edição (modal "Adicionar", painel da nota) redesenha o cérebro
+    window.addEventListener("jarvis:changed", loadSnapshot);
+    return () => window.removeEventListener("jarvis:changed", loadSnapshot);
+  }, [loadSnapshot]);
+
+  /** Seleciona um ponto: destaca a vizinhança de forma persistente e centraliza a câmera. */
+  const selectNode = useCallback((id: string | null, moveCamera = false) => {
+    const g = graphRef.current;
+    const r = sigmaRef.current;
+    setSelectedId(id);
+    stateRef.current = {
+      ...stateRef.current,
+      selected: id, // mesmo que o nó ainda não esteja no grafo (nota recém-criada): vale após recarregar
+      selNeighbors: id && g?.hasNode(id) ? new Set(g.neighbors(id)) : new Set(),
+    };
+    if (r && id && moveCamera && g?.hasNode(id)) {
+      const d = r.getNodeDisplayData(id);
+      if (d) r.getCamera().animate({ x: d.x, y: d.y, ratio: 0.3 }, { duration: 500 });
+    }
+    r?.refresh({ skipIndexation: true });
   }, []);
 
   const timeRange = useMemo(() => {
@@ -161,11 +191,13 @@ export function GraphView({ focusId }: { focusId?: string }) {
             res.hidden = true;
             return res;
           }
-          if (s.hovered) {
-            if (node === s.hovered || s.neighbors.has(node)) {
+          const active = s.hovered ?? s.selected;
+          const near = s.hovered ? s.neighbors : s.selNeighbors;
+          if (active) {
+            if (node === active || near.has(node) || node === s.selected) {
               res.zIndex = 1;
               res.forceLabel = true;
-              if (node === s.hovered) res.color = SIGNAL;
+              if (node === active || node === s.selected) res.color = SIGNAL;
             } else {
               res.color = DIM_NODE;
               res.label = "";
@@ -184,9 +216,10 @@ export function GraphView({ focusId }: { focusId?: string }) {
             return res;
           }
           res.color = suggested ? EDGE_SUGGESTED : EDGE_COLOR;
-          if (s.hovered) {
+          const active = s.hovered ?? s.selected;
+          if (active) {
             const [a, b] = g.extremities(edge);
-            if (a === s.hovered || b === s.hovered) {
+            if (a === active || b === active) {
               res.color = suggested ? EDGE_SUGGESTED_HIGHLIGHT : EDGE_HIGHLIGHT;
               res.size = 1.5;
             } else res.hidden = true;
@@ -197,17 +230,15 @@ export function GraphView({ focusId }: { focusId?: string }) {
       sigmaRef.current = renderer;
 
       renderer.on("enterNode", ({ node }) => {
-        stateRef.current = { hovered: node, neighbors: new Set(g.neighbors(node)) };
+        stateRef.current = { ...stateRef.current, hovered: node, neighbors: new Set(g.neighbors(node)) };
         renderer.refresh({ skipIndexation: true });
       });
       renderer.on("leaveNode", () => {
-        stateRef.current = { hovered: null, neighbors: new Set() };
+        stateRef.current = { ...stateRef.current, hovered: null, neighbors: new Set() };
         renderer.refresh({ skipIndexation: true });
       });
-      renderer.on("clickNode", ({ node }) => {
-        setSelected(snapshot.nodes.find((n) => n.id === node) ?? null);
-      });
-      renderer.on("clickStage", () => setSelected(null));
+      renderer.on("clickNode", ({ node }) => selectNode(node, true));
+      renderer.on("clickStage", () => selectNode(null));
       renderer.on("enterEdge", ({ edge }) => {
         const a = g.getEdgeAttributes(edge);
         const [s, t] = g.extremities(edge);
@@ -218,12 +249,9 @@ export function GraphView({ focusId }: { focusId?: string }) {
       renderer.on("leaveEdge", () => setEdgeInfo(""));
 
       if (needsLayout) runLayout(g.order > 2000 ? 8000 : 4000);
-      if (focusId && g.hasNode(focusId)) {
-        const d = renderer.getNodeDisplayData(focusId);
-        if (d) renderer.getCamera().animate({ x: d.x, y: d.y, ratio: 0.3 }, { duration: 600 });
-        setSelected(snapshot.nodes.find((n) => n.id === focusId) ?? null);
-        stateRef.current = { hovered: focusId, neighbors: new Set(g.neighbors(focusId)) };
-      }
+      // Mantém a seleção (ou o foco vindo da URL) depois de recarregar o grafo
+      const keep = stateRef.current.selected ?? focusId ?? null;
+      if (keep && g.hasNode(keep)) selectNode(keep, !stateRef.current.selected);
     });
 
     return () => {
@@ -232,7 +260,7 @@ export function GraphView({ focusId }: { focusId?: string }) {
       sigmaRef.current?.kill();
       sigmaRef.current = null;
     };
-  }, [snapshot, focusId, runLayout]);
+  }, [snapshot, focusId, runLayout, selectNode]);
 
   // Re-render quando filtros mudam
   useEffect(() => {
@@ -269,11 +297,7 @@ export function GraphView({ focusId }: { focusId?: string }) {
     const q = search.toLowerCase();
     const id = g.findNode((_, a) => String(a.label).toLowerCase().includes(q));
     if (!id) return;
-    const d = r.getNodeDisplayData(id);
-    if (d) r.getCamera().animate({ x: d.x, y: d.y, ratio: 0.25 }, { duration: 500 });
-    stateRef.current = { hovered: id, neighbors: new Set(g.neighbors(id)) };
-    r.refresh({ skipIndexation: true });
-    setSelected(snapshot?.nodes.find((n) => n.id === id) ?? null);
+    selectNode(id, true);
   }
 
   const typeCounts = useMemo(() => {
@@ -289,14 +313,24 @@ export function GraphView({ focusId }: { focusId?: string }) {
       {error && <p className="absolute left-4 top-4 text-red-400">Erro ao carregar o grafo: {error}</p>}
       {snapshot && snapshot.nodes.length === 0 && (
         <p className="absolute inset-0 flex items-center justify-center text-muted">
-          Seu grafo está vazio. Capture algo na Inbox ou pelo Telegram.
+          Seu grafo está vazio. Toque em “+ Adicionar” para guardar sua primeira nota ou arquivo.
         </p>
       )}
 
       {/* Painel de controles */}
-      <div className="surface absolute left-3 top-3 max-h-[calc(100%-24px)] w-72 space-y-4 overflow-y-auto rounded-sm p-4 text-sm shadow-2xl">
+      <button
+        onClick={() => setShowFilters((v) => !v)}
+        className="surface absolute left-3 top-3 z-20 rounded-sm px-3 py-2 text-[10.5px] uppercase tracking-[0.14em] md:hidden"
+      >
+        {showFilters ? "Fechar" : "Filtros"}
+      </button>
+      <div
+        className={`surface absolute left-3 top-3 max-h-[calc(100%-24px)] w-72 space-y-4 overflow-y-auto rounded-sm p-4 text-sm shadow-2xl max-md:top-14 ${
+          showFilters ? "" : "max-md:hidden"
+        }`}
+      >
         <div className="kicker flex items-center justify-between">
-          <span>03 — Grafo</span>
+          <span>Cérebro</span>
           <CheckerMark className="text-foreground/50" />
         </div>
         <form onSubmit={focusSearch}>
@@ -370,23 +404,16 @@ export function GraphView({ focusId }: { focusId?: string }) {
         </div>
       </div>
 
-      {/* Nó selecionado */}
-      {selected && (
-        <div className="surface absolute right-3 top-3 w-72 rounded-sm p-4 shadow-2xl">
-          <div className="kicker mb-2 flex items-center gap-2">
-            <span className="h-1.5 w-1.5 bg-[var(--signal)]" />
-            {TYPE_LABELS[selected.type] ?? selected.type} · {selected.stage} · {selected.degree} conexões
-          </div>
-          <h3 className="text-base font-medium leading-snug text-foreground">{selected.title}</h3>
-          <div className="mt-4 flex items-center gap-3 border-t border-border pt-3">
-            <Link href={`/notes/${selected.id}`} className="btn-primary px-3 py-1.5">
-              Abrir nota
-            </Link>
-            <button onClick={() => setSelected(null)} className="ml-auto text-[10.5px] uppercase tracking-[0.14em] text-muted hover:text-foreground">
-              fechar
-            </button>
-          </div>
-        </div>
+      {/* Painel do ponto selecionado: ler, editar, anexar e navegar sem sair do grafo */}
+      {selectedId && (
+        <NoteDrawer
+          key={selectedId}
+          noteId={selectedId}
+          aiReady={aiReady}
+          onClose={() => selectNode(null)}
+          onSelect={(id) => selectNode(id, true)}
+          onChanged={loadSnapshot}
+        />
       )}
 
       {edgeInfo && (

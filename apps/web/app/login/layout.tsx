@@ -8,6 +8,6 @@ import { loginRequired } from "@/lib/access";
  */
 export default async function LoginLayout({ children }: { children: React.ReactNode }) {
   await connection();
-  if (!loginRequired()) redirect("/inbox");
+  if (!loginRequired()) redirect("/graph");
   return children;
 }

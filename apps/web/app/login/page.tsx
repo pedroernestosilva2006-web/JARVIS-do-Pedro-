@@ -44,13 +44,13 @@ export default function LoginPage() {
       if (mode === "entrar") {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) return setError(authErrorMessage(error.message, error.code));
-        router.replace("/inbox");
+        router.replace("/graph");
         router.refresh();
       } else if (mode === "criar") {
         const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: redirectTo } });
         if (error) return setError(authErrorMessage(error.message, error.code));
         if (data.session) {
-          router.replace("/inbox");
+          router.replace("/graph");
           router.refresh();
         } else {
           // Confirmação de e-mail ligada: o login só vale depois do clique no link
