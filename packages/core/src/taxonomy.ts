@@ -102,6 +102,28 @@ export const TYPE_COLORS: Record<NoteType, string> = {
   moc: "#ffffff",
 };
 
+/**
+ * Paleta monocromática (padrão da interface): o tipo vira luminosidade.
+ * Hubs e conhecimento mais claros; entidades e ação em cinzas médios.
+ */
+export const TYPE_TONES: Record<NoteType, string> = {
+  moc: "#ffffff",
+  insight: "#e6e6e6",
+  citacao: "#cfcfcf",
+  pergunta: "#bdbdbd",
+  ideia: "#d8d8d8",
+  projeto: "#f5f5f5",
+  tarefa: "#9a9a9a",
+  evento: "#b0b0b0",
+  diario: "#8c8c8c",
+  livro: "#a3a3a3",
+  pessoa: "#c2c2c2",
+  empresa: "#8f8f8f",
+  conceito: "#7a7a7a",
+  ferramenta: "#868686",
+  lugar: "#747474",
+};
+
 export const TYPE_LABELS: Record<NoteType, string> = {
   evento: "Evento",
   diario: "Diário",

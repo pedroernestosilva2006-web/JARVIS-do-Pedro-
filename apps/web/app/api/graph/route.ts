@@ -1,16 +1,10 @@
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { getAppContext } from "@/lib/access";
 
 async function context() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: workspaceId } = await supabase.rpc("bootstrap_workspace", {});
-  return workspaceId ? { supabase, workspaceId: workspaceId as string } : null;
+  const ctx = await getAppContext();
+  return ctx ? { supabase: ctx.db, workspaceId: ctx.workspaceId } : null;
 }
-
 /** Snapshot leve do grafo (id/tipo/grau/x/y + arestas). */
 export async function GET(req: Request) {
   const ctx = await context();

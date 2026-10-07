@@ -1,7 +1,7 @@
 import "server-only";
 import { env } from "@/lib/env";
 import { notifyChannel } from "@/lib/capture/notify";
-import { processEmbeddings } from "@/lib/ingest/embeddings";
+import { backfillEmbeddings, processEmbeddings } from "@/lib/ingest/embeddings";
 import { processSource, summarizeResult } from "@/lib/ingest/pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -79,6 +79,14 @@ export async function drainQueues(opts: { captures?: number; embeddings?: number
       for (const j of jobs.filter((j) => j.read_ct >= MAX_ATTEMPTS)) {
         await db.rpc("archive_job", { p_queue: "embeddings", p_msg_id: j.msg_id });
       }
+    }
+  }
+  // Sem jobs na fila: aproveita para preencher embeddings pendentes (chave configurada depois)
+  if (!jobs.length) {
+    try {
+      report.embedded += await backfillEmbeddings(db);
+    } catch (err) {
+      console.error("backfill de embeddings falhou", err);
     }
   }
   return report;

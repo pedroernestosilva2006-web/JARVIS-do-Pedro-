@@ -45,23 +45,28 @@ export default async function NotePage({
   const props = Object.entries((note.properties ?? {}) as Record<string, unknown>);
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 p-4 md:grid-cols-[1fr_300px] md:p-8">
-      <article className="min-w-0 space-y-4">
+    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-6 md:grid-cols-[1fr_300px] md:px-10 md:py-10">
+      <article className="min-w-0 space-y-5">
+        <div className="kicker flex items-center gap-3">
+          <span>02 — Nota</span>
+          <span className="h-px flex-1 bg-border" />
+          <Link href="/notes" className="hover:text-foreground">Todas as notas</Link>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <TypeBadge type={note.type} />
           <StageBadge stage={note.stage} />
           <span className="text-xs text-muted">
             {note.created_by === "ai" ? "criada pela IA" : "criada por você"} · {timeAgo(note.created_at)}
           </span>
-          <Link href={`/graph?focus=${note.id}`} className="ml-auto text-xs text-accent">
-            ver no grafo →
+          <Link href={`/graph?focus=${note.id}`} className="btn-outline ml-auto px-3 py-1">
+            Ver no grafo
           </Link>
         </div>
         {props.length > 0 && (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border border-border bg-panel p-3 text-sm">
+          <dl className="surface grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 rounded-sm p-4 text-sm">
             {props.map(([k, v]) => (
               <div key={k} className="contents">
-                <dt className="text-muted">{k}</dt>
+                <dt className="kicker self-center">{k}</dt>
                 <dd>{String(v)}</dd>
               </div>
             ))}
@@ -76,7 +81,7 @@ export default async function NotePage({
                 const src = s.source as unknown as { channel: string; kind: string; captured_at: string; url: string | null } | null;
                 return (
                   <li key={i}>
-                    {s.excerpt && <blockquote className="border-l-2 border-accent pl-3 italic text-muted">“{s.excerpt}”</blockquote>}
+                    {s.excerpt && <blockquote className="border-l border-foreground pl-3 italic text-muted">“{s.excerpt}”</blockquote>}
                     {src && (
                       <p className="mt-1 text-xs text-muted">
                         {src.kind} via {src.channel} · {timeAgo(src.captured_at)}

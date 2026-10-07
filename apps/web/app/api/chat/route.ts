@@ -4,7 +4,7 @@ import { z } from "zod";
 import { runJarvis, type JarvisEvent } from "@/lib/jarvis/agent";
 import { summarizeConversation } from "@/lib/jarvis/memory";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getAppContext } from "@/lib/access";
 
 export const maxDuration = 300;
 
@@ -18,16 +18,11 @@ const Body = z.object({
  * Usa o cliente do usuário (RLS) para tudo — inclusive nas tools.
  */
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return new Response("unauthorized", { status: 401 });
+  const ctx = await getAppContext();
+  if (!ctx) return new Response("unauthorized", { status: 401 });
+  const { db: supabase, workspaceId } = ctx;
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return new Response("bad request", { status: 400 });
-
-  const { data: workspaceId, error: wsErr } = await supabase.rpc("bootstrap_workspace", {});
-  if (wsErr || !workspaceId) return new Response("workspace", { status: 500 });
 
   let conversationId = parsed.data.conversationId ?? null;
   if (!conversationId) {
@@ -56,7 +51,7 @@ export async function POST(req: Request) {
   after(async () => {
     await streamDone;
     if (!saved) return;
-    await summarizeConversation(createAdminClient(), workspaceId as string, conversationId!).catch((e) =>
+    await summarizeConversation(createAdminClient(), workspaceId, conversationId!).catch((e) =>
       console.error("resumo da conversa falhou", e),
     );
   });

@@ -1,4 +1,4 @@
-import { TYPE_COLORS, isNoteType } from "./taxonomy";
+import { TYPE_COLORS, TYPE_TONES, isNoteType } from "./taxonomy";
 
 /** Tamanho do nó = f(grau). A raiz evita que um hub engula a tela (regra do Obsidian). */
 export function nodeSize(degree: number, type?: string): number {
@@ -8,6 +8,10 @@ export function nodeSize(degree: number, type?: string): number {
 
 export function nodeColor(type: string): string {
   return isNoteType(type) ? TYPE_COLORS[type] : "#888888";
+}
+
+export function nodeTone(type: string): string {
+  return isNoteType(type) ? TYPE_TONES[type] : "#808080";
 }
 
 /** Paleta para colorir por comunidade (Louvain). */

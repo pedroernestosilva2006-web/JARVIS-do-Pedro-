@@ -7,6 +7,8 @@ pela web. O JARVIS transforma cada entrada em **notas atômicas conectadas**, mo
 **Stack:** Next.js 16 · Supabase (Postgres, pgvector, pgmq, pg_cron, Storage, Auth, RLS) · Claude (Haiku 4.5 na
 ingestão, Sonnet 5.5 no chat) · OpenAI (embeddings + transcrição) · Sigma.js + Graphology · Vercel.
 
+![Login do JARVIS](docs/img/login.png)
+
 ![Grafo do JARVIS (dados de exemplo)](docs/img/grafo.png)
 
 ## O que já funciona
@@ -38,7 +40,7 @@ npx supabase db reset             # aplica migrations + seed
 cp .env.example apps/web/.env.local   # preencha com `npx supabase status` e suas chaves
 pnpm dev                          # http://localhost:3000
 ```
-O login é por link mágico. No Supabase local, os e-mails ficam no Mailpit (`supabase status` mostra a URL).
+O app abre direto, sem login (uso interno); com `JARVIS_REQUIRE_LOGIN=1` passa a exigir e-mail e senha (ou link mágico). No Supabase local, os e-mails ficam no Mailpit (`supabase status` mostra a URL).
 Para ver os dados do seed, associe seu usuário ao workspace de exemplo (instruções no topo de `supabase/seed.sql`).
 
 ## Testes

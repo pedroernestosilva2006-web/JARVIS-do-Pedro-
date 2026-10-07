@@ -1,18 +1,14 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAppContext } from "@/lib/access";
 
-/** Usuário logado + workspace pessoal (criado no primeiro acesso). Redireciona ao login se não houver sessão. */
+/**
+ * Usuário + workspace para as páginas. Com login obrigatório e sem sessão, redireciona para /login;
+ * no modo interno (padrão) entra direto como o dono.
+ */
 export const requireWorkspace = cache(async () => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const { data: workspaceId, error } = await supabase.rpc("bootstrap_workspace", {
-    p_name: "Meu cérebro",
-  });
-  if (error || !workspaceId) throw new Error(`Falha ao carregar workspace: ${error?.message}`);
-  return { supabase, user, workspaceId: workspaceId as string };
+  const ctx = await getAppContext();
+  if (!ctx) redirect("/login");
+  return { supabase: ctx.db, user: ctx.user, workspaceId: ctx.workspaceId, internal: ctx.internal };
 });

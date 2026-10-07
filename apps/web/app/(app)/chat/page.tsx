@@ -45,7 +45,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   return (
     <div className="flex">
       <aside className="hidden w-56 shrink-0 border-r border-border p-3 lg:block">
-        <Link href="/chat" className="mb-3 block rounded-md border border-border px-2 py-1.5 text-center text-sm hover:border-accent">
+        <Link href="/chat" className="btn-outline mb-4 block px-3 py-2 text-center">
           + Nova conversa
         </Link>
         <ul className="space-y-1 text-sm">

@@ -1,4 +1,19 @@
-# Deploy (estado em 06/10/2026)
+# Deploy (estado em 07/10/2026)
+
+## Acesso: sem login (uso interno) ⚠️
+Por decisão do dono, o JARVIS está **sem tela de login**: o app entra direto como o dono
+(`JARVIS_OWNER_EMAIL`, ou o usuário mais antigo do Supabase) e os dados ficam sempre filtrados pelo workspace dele.
+**Quem tiver a URL tem acesso total** (notas, backup, chat — e o chat gasta créditos de IA) e as páginas pedem
+aos buscadores para não indexar (`X-Robots-Tag`). Para voltar a exigir e-mail e senha, defina
+`JARVIS_REQUIRE_LOGIN=1` na Vercel e faça um novo deploy. Antes de compartilhar a URL ou vender o produto, ligue o login
+(ou ative a "Deployment Protection" da Vercel no projeto).
+
+## IA sem chave da Anthropic
+Sem `ANTHROPIC_API_KEY`, o app usa o **Vercel AI Gateway** (`AI_GATEWAY_API_KEY`, ou o token OIDC que a Vercel
+injeta sozinha quando o AI Gateway está habilitado no projeto). Modelos padrão no gateway:
+`anthropic/claude-haiku-4.5` (extração) e `anthropic/claude-sonnet-4.5` (chat); troque com `JARVIS_EXTRACT_MODEL` /
+`JARVIS_CHAT_MODEL` se os nomes mudarem. `OPENAI_API_KEY` é opcional: sem ela não há embeddings (busca só por palavra-chave)
+nem transcrição de áudio; ao configurar depois, o worker preenche os embeddings que faltam.
 
 ## Supabase ✅ (plano Free)
 - Projeto **jarvis** · ref `smyzqrjvpwiiztrvazne` · região `sa-east-1` (São Paulo)
@@ -17,8 +32,12 @@
    grant execute on function public.merge_notes(uuid, uuid, uuid) to authenticated, service_role;
    ```
 2. **Secret key**: Project Settings → API Keys → copie a `sb_secret_…` para a Vercel (`SUPABASE_SECRET_KEY`).
-3. **Auth → URL Configuration**: Site URL `https://<app>.vercel.app` e Redirect URL `https://<app>.vercel.app/auth/callback`.
-4. **Vault** (depois que souber a URL da Vercel), no SQL Editor:
+3. **Login por e-mail e senha**: em Authentication → Sign In / Providers → Email, deixe "Confirm email" ligado
+   (recomendado) e defina o mínimo de senha em 8. O SMTP padrão do Supabase envia poucos e-mails por hora;
+   para uso real, configure um SMTP próprio (Resend, SES…) em Authentication → Emails.
+4. **Auth → URL Configuration**: Site URL `https://<app>.vercel.app` e Redirect URL `https://<app>.vercel.app/**`
+   (o link de "Esqueci minha senha" volta em `/auth/callback?next=/settings`; sem o curinga o Supabase cai na Site URL).
+5. **Vault** (depois que souber a URL da Vercel), no SQL Editor:
    ```sql
    select vault.create_secret('https://<app>.vercel.app', 'jarvis_app_url');
    select vault.create_secret('<o mesmo CRON_SECRET da Vercel>', 'jarvis_cron_secret');
@@ -35,7 +54,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://smyzqrjvpwiiztrvazne.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_9fIsv_dMC-lZM8DDN7gXBA_mq8TkpBj
 SUPABASE_SECRET_KEY=<do painel>
 NEXT_PUBLIC_APP_URL=https://<app>.vercel.app
-ANTHROPIC_API_KEY=… · OPENAI_API_KEY=…
+ANTHROPIC_API_KEY=…  (ou habilite o AI Gateway e use AI_GATEWAY_API_KEY)
+OPENAI_API_KEY=…  (opcional: embeddings e transcrição de áudio)
 TELEGRAM_BOT_TOKEN=… · TELEGRAM_BOT_USERNAME=… · TELEGRAM_WEBHOOK_SECRET=<gere: openssl rand -hex 32>
 CRON_SECRET=<gere: openssl rand -hex 32>
 ```

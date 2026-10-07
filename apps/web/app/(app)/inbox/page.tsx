@@ -1,3 +1,4 @@
+import { PageHeader, Stat, WaveField } from "@/components/brand/motifs";
 import { CaptureBox } from "@/components/inbox/CaptureBox";
 import { Button, Card, NoteLink, TypeBadge, timeAgo } from "@/components/ui";
 import { requireWorkspace } from "@/lib/workspace";
@@ -9,7 +10,7 @@ type Rel = { id: string; title: string; type: string } | null;
 
 export default async function InboxPage() {
   const { supabase, workspaceId } = await requireWorkspace();
-  const [{ data: sources }, { data: seeds }, { data: links }, { data: items }] = await Promise.all([
+  const [{ data: sources }, { data: seeds }, { data: links }, { data: items }, { count: notesCount }] = await Promise.all([
     supabase
       .from("sources")
       .select("id, channel, kind, raw_text, status, error, captured_at")
@@ -37,22 +38,35 @@ export default async function InboxPage() {
       .eq("status", "open")
       .order("created_at", { ascending: false })
       .limit(30),
+    supabase.from("notes").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId),
   ]);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
-      <header>
-        <h1 className="text-2xl font-bold">Inbox</h1>
-        <p className="text-sm text-muted">Capture, revise as sementes e aprove as conexões sugeridas pela IA.</p>
-      </header>
+    <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 md:px-10 md:py-10">
+      <PageHeader
+        index="01 — Inbox"
+        section="Capturar · Revisar · Conectar"
+        title="O que você aprendeu"
+        subtitle="Capture uma ideia, revise as sementes e aprove as conexões que a IA sugeriu."
+      />
 
-      <Card title="Captura rápida">
+      <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-4">
+        <Stat value={seeds?.length ?? 0} label="sementes esperando revisão" />
+        <Stat value={links?.length ?? 0} label="conexões sugeridas pela IA" />
+        <Stat value={items?.length ?? 0} label="decisões pendentes (merges, MOCs)" />
+        <Stat value={notesCount ?? 0} label="notas no seu cérebro" highlight />
+      </div>
+
+      <section className="surface relative overflow-hidden rounded-sm p-5">
+        <WaveField className="pointer-events-none absolute -right-10 -top-10 h-48 w-[60%] opacity-60" lines={24} amplitude={50} opacity={0.35} />
+        <div className="relative">
+          <h2 className="kicker mb-4">Captura rápida</h2>
         <CaptureBox />
         {!!sources?.length && (
           <ul className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted">
             {sources.map((s) => (
               <li key={s.id} className="flex items-center gap-2">
-                <span className={s.status === "done" ? "text-green-400" : s.status === "error" ? "text-red-400" : "text-yellow-400"}>●</span>
+                <span className={`h-1.5 w-1.5 shrink-0 ${s.status === "done" ? "bg-foreground" : s.status === "error" ? "bg-[var(--signal)]" : "animate-pulse bg-muted"}`} title={s.status} />
                 <span className="w-16 shrink-0">{s.channel}</span>
                 <span className="w-12 shrink-0">{s.kind}</span>
                 <span className="truncate">{s.error ?? s.raw_text ?? "(arquivo)"}</span>
@@ -61,7 +75,8 @@ export default async function InboxPage() {
             ))}
           </ul>
         )}
-      </Card>
+        </div>
+      </section>
 
       {!!items?.length && (
         <Card title={`Decisões pendentes (${items.length})`}>

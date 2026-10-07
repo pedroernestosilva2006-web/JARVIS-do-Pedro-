@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { extractUrl, type NormalizedCapture, type SourceKind } from "@jarvis/core";
 import { saveCapture } from "@/lib/capture/store";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getAppContext } from "@/lib/access";
 import { drainQueues } from "@/lib/workers/drain";
 
 export const maxDuration = 300;
@@ -19,13 +19,9 @@ function kindFromMime(mime: string): SourceKind | null {
 
 /** Captura pela web/PWA: texto, link ou arquivo (áudio, imagem, PDF). multipart/form-data. */
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return new Response("unauthorized", { status: 401 });
-  const { data: workspaceId } = await supabase.rpc("bootstrap_workspace", {});
-  if (!workspaceId) return new Response("workspace", { status: 500 });
+  const ctx = await getAppContext();
+  if (!ctx) return new Response("unauthorized", { status: 401 });
+  const { workspaceId, user } = ctx;
 
   const form = await req.formData();
   const text = String(form.get("text") ?? "").trim();
@@ -66,7 +62,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Envie um texto, link ou arquivo" }, { status: 400 });
   }
 
-  const { sourceId } = await saveCapture(workspaceId as string, capture, contextNoteId, storagePath);
+  const { sourceId } = await saveCapture(workspaceId, capture, contextNoteId, storagePath);
   after(() => drainQueues({ captures: 1, embeddings: 0 }).then(() => undefined));
   return Response.json({ sourceId });
 }
